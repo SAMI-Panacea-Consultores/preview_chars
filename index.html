@@ -4,7 +4,7 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-  <title>Tortas por Red · Comparador v5</title>
+  <title>Tortas por Red · v6 Responsive</title>
   <link rel="preconnect" href="https://cdn.jsdelivr.net"/>
   <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/chartjs-plugin-datalabels@2"></script>
@@ -30,23 +30,30 @@
         radial-gradient(1200px 700px at 110% 10%, #e9fbff 0%, transparent 60%) no-repeat,
         #fff;
     }
-    header { display:flex; align-items:center; justify-content:space-between; padding: 28px 24px 12px 24px; }
-    .brand { display:flex; align-items:center; gap:14px; }
-    .logo { width:40px; height:40px; border-radius:12px; background: conic-gradient(from 120deg, var(--accent), var(--accent-2)); box-shadow: 0 12px 32px rgba(37,99,235,.28);}
-    h1 { margin:0; font-size:22px; letter-spacing:.2px; }
+    header { display:flex; align-items:center; justify-content:space-between; padding: 20px 16px 8px 16px; }
+    .brand { display:flex; align-items:center; gap:12px; }
+    .logo { width:32px; height:32px; border-radius:10px; background: conic-gradient(from 120deg, var(--accent), var(--accent-2)); box-shadow: 0 8px 22px rgba(37,99,235,.24);}
+    h1 { margin:0; font-size:20px; letter-spacing:.2px; }
     .sub { color: var(--muted); font-size:12px; margin-top:4px; }
-    .shell { padding: 0 24px 28px; }
-    .controls { display:grid; gap:12px; grid-template-columns: repeat(6, 1fr); margin-bottom: 16px; }
+    .shell { padding: 0 16px 20px; }
+    .controls { display:grid; gap:10px; grid-template-columns: repeat(6, 1fr); margin-bottom: 14px; }
+    @media (max-width: 1024px) {
+      .controls { grid-template-columns: repeat(3, 1fr); }
+    }
+    @media (max-width: 640px) {
+      header { flex-direction: column; align-items: flex-start; gap: 10px; }
+      .controls { grid-template-columns: 1fr; }
+    }
     .card {
       background: var(--card);
       -webkit-backdrop-filter: blur(8px);
       backdrop-filter: blur(8px);
       border:1px solid var(--border);
       border-radius:16px;
-      padding:16px;
+      padding:12px;
       box-shadow: 0 8px 30px rgba(2,6,23,0.06);
     }
-    label { display:block; font-size:12px; color:var(--muted); margin-bottom:6px; }
+    label { display:block; font-size:12px; color:var(--muted); margin-bottom:4px; }
     select {
       width:100%; background:#fff; color:var(--text);
       border:1px solid var(--border); border-radius:12px; padding:10px 12px; font-size:14px; outline:none;
@@ -61,16 +68,19 @@
     .btn:active { transform: translateY(1px); }
     .btn-primary { border-color: #c7d2fe; background: linear-gradient(180deg,#ffffff,#f5f7ff); }
     .btn-primary.active { border-color: var(--accent); box-shadow: 0 0 0 5px var(--ring); }
-    .row { display:grid; grid-template-columns:1fr; gap:16px; }
+    .row { display:grid; grid-template-columns:1fr; gap:12px; }
     @media (min-width: 900px) { .row.cols-2 { grid-template-columns: 1fr 1fr; } .row.cols-3 { grid-template-columns: 1fr 1fr 1fr; } }
-    .chart-wrap { position:relative; height: 388px; background:#fff; border:1px solid var(--border); border-radius:16px; padding:16px; }
+    .chart-wrap { position:relative; height: 340px; background:#fff; border:1px solid var(--border); border-radius:16px; padding:12px; }
+    @media (max-width: 640px) {
+      .chart-wrap { height: 260px; padding:10px; }
+    }
     .compare-panel {
       grid-column: 1 / -1;
-      display: grid; grid-template-columns: repeat(4, 1fr); gap: 12px;
+      display: grid; grid-template-columns: repeat(4, 1fr); gap: 10px;
       background: var(--panel);
       border:1px dashed var(--border);
       border-radius: 14px;
-      padding: 12px;
+      padding: 10px;
       overflow: hidden;
       max-height: 0;
       opacity: 0;
@@ -78,8 +88,11 @@
       transition: max-height .35s ease, opacity .25s ease, transform .25s ease;
     }
     .compare-panel.open { max-height: 220px; opacity: 1; transform: translateY(0);}
+    @media (max-width: 640px) {
+      .compare-panel { grid-template-columns: repeat(2, 1fr); }
+    }
     .hint { font-size: 12px; color: var(--muted); margin-left: 6px; }
-    footer { margin-top: 18px; color: var(--muted); font-size: 12px; }
+    footer { margin-top: 14px; color: var(--muted); font-size: 12px; }
   </style>
 </head>
 <body>
@@ -87,8 +100,8 @@
     <div class="brand">
       <div class="logo"></div>
       <div>
-        <h1>Tortas por Red · Comparador v5</h1>
-        <div class="sub">Etiqueta interna: porcentaje con 1 decimal directamente en cada segmento</div>
+        <h1>Tortas por Red · v6 Responsive</h1>
+        <div class="sub">Diseño adaptado a móvil · Leyenda abajo en pantallas pequeñas · Porcentajes internos</div>
       </div>
     </div>
     <button id="compareToggle" class="btn btn-primary">🔀 Comparar perfiles</button>
@@ -135,9 +148,9 @@
 
       <!-- Panel de comparación (desplegable) -->
       <div id="comparePanel" class="compare-panel">
-        <div style="grid-column: 1 / -1; display:flex; align-items:center; justify-content:space-between; margin-bottom:4px;">
+        <div style="grid-column: 1 / -1; display:flex; align-items:center; justify-content:space-between; margin-bottom:2px;">
           <strong>Comparar perfiles</strong>
-          <span class="hint">Selecciona Red/Perfil A y B. Verás dos donuts con porcentajes internos.</span>
+          <span class="hint">Selecciona Red/Perfil A y B</span>
         </div>
         <div>
           <label for="redA">Red A</label>
@@ -224,6 +237,10 @@
       });
     }
 
+    function legendPosition() {
+      return window.innerWidth < 900 ? 'bottom' : 'right';
+    }
+
     function datalabelsPercentOptions() {
       return {
         formatter: (value, ctx) => {
@@ -233,7 +250,11 @@
           return pct.toFixed(1) + '%';
         },
         color: '#111827',
-        font: { weight: '600', size: 11 },
+        font: ctx => {
+          const w = ctx.chart.width || 300;
+          const size = Math.max(9, Math.min(12, Math.round(w / 50)));
+          return { weight: '600', size };
+        },
         clamp: true
       };
     }
@@ -246,8 +267,9 @@
         options: {
           cutout: '60%',
           responsive: true,
+          maintainAspectRatio: false,
           plugins: {
-            legend: { position: 'right' },
+            legend: { position: legendPosition() },
             title: { display: !!title, text: title },
             datalabels: datalabelsPercentOptions()
           }
@@ -372,6 +394,13 @@
     perfilA.addEventListener('change', () => { if (isComparing) renderComparar(); });
     perfilB.addEventListener('change', () => { if (isComparing) renderComparar(); });
 
+    // Handle responsive legend on resize (debounced)
+    let resizeTimer = null;
+    window.addEventListener('resize', () => {
+      clearTimeout(resizeTimer);
+      resizeTimer = setTimeout(() => onModoChange(), 120);
+    });
+
     // init
     populatePerfiles(perfilSel, redSel.value);
     populatePerfiles(perfilA, redA.value);
@@ -381,3 +410,4 @@
   </script>
 </body>
 </html>
+
