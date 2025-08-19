@@ -1,25 +1,27 @@
 'use client'
 
 import { useEffect, useMemo, useRef, useState } from 'react';
+import { useRouter } from 'next/navigation';
 import Papa from 'papaparse';
 import { PieChart, Pie, Cell, ResponsiveContainer, Legend, Tooltip } from 'recharts';
 
 type Row = Record<string, string>;
 
+// Colores Apple-inspired para las gráficas
 const CATEGORY_COLOR: Record<string, string> = {
-  'Error en procesamiento': '#dc2626',
-  'INVERTIR PARA CRECER': '#65a30d', 
-  'SEGURIDAD': '#0891b2',
-  'TRANSPARENCIA PÚBLICA': '#7c3aed',
-  'Sin categoría': '#6b7280'
+  'Error en procesamiento': '#FF3B30', // System Red
+  'INVERTIR PARA CRECER': '#34C759', // System Green  
+  'SEGURIDAD': '#007AFF', // System Blue
+  'TRANSPARENCIA PÚBLICA': '#5856D6', // System Purple
+  'Sin categoría': '#8E8E93' // System Gray
 };
 
 const ALL_CATEGORIES = [
   'Error en procesamiento',
   'INVERTIR PARA CRECER',
   'SEGURIDAD',
-  'Sin categoría',
-  'TRANSPARENCIA PÚBLICA'
+  'TRANSPARENCIA PÚBLICA',
+  'Sin categoría'
 ];
 
 type Aggregated = {
@@ -29,6 +31,69 @@ type Aggregated = {
   totalPorRed: Record<string, number>;
   totalPorPerfil: Record<string, Record<string, number>>; // red -> perfil -> total posts
 };
+
+// Función para calcular impresiones por perfil y categoría
+function calculateImpactByProfile(rows: Row[], redKey: string, perfilKey: string, catKey: string, parseNumber: (str: string) => number) {
+  const profileImpact: Record<string, Record<string, Record<string, number>>> = {};
+
+  function normalizeCategory(raw: string): string {
+    let c = (raw || '').trim();
+    if (!c) return 'Sin categoría';
+    
+    // Remover comillas
+    c = c.replace(/^["']|["']$/g, '');
+    
+    // Manejar N/A, guiones, etc.
+    if (!c || /^(n\/a|na|n\.a\.?|-+|_+)$/i.test(c)) {
+      return 'Sin categoría';
+    }
+    
+    // Normalizar nombres conocidos
+    if (/invertir.*para.*crecer/i.test(c)) return 'INVERTIR PARA CRECER';
+    if (/seguridad/i.test(c)) return 'SEGURIDAD';
+    if (/transparencia.*publica/i.test(c)) return 'TRANSPARENCIA PÚBLICA';
+    if (/error/i.test(c)) return 'Error en procesamiento';
+    if (/estrategia/i.test(c)) return 'Sin categoría';
+    
+    return c;
+  }
+
+  for (const r of rows) {
+    const red = (r[redKey] || '').trim();
+    const perfil = (r[perfilKey] || '').trim();
+    const rawCats = (r[catKey] || '').trim();
+    if (!red || !perfil) continue;
+
+    const impresiones = parseNumber(r['Impresiones'] || '0');
+    
+    // Debug temporal
+    if (rawCats.includes('INVERTIR') && impresiones > 0) {
+      console.log('Debug INVERTIR:', {
+        perfil: perfil,
+        rawCats: rawCats,
+        impresiones: impresiones,
+        impressionsRaw: r['Impresiones']
+      });
+    }
+    
+    // Manejar múltiples categorías separadas por comas
+    const categories = rawCats.split(',').map(normalizeCategory).filter(Boolean);
+    if (categories.length === 0) categories.push('Sin categoría');
+
+    // Dividir las impresiones proporcionalmente entre las categorías
+    const impresionesPerCategory = impresiones / categories.length;
+    
+    for (const cat of categories) {
+      if (!profileImpact[red]) profileImpact[red] = {};
+      if (!profileImpact[red][perfil]) profileImpact[red][perfil] = {};
+      if (!profileImpact[red][perfil][cat]) profileImpact[red][perfil][cat] = 0;
+      
+      profileImpact[red][perfil][cat] += impresionesPerCategory;
+    }
+  }
+
+  return profileImpact;
+}
 
 function aggregate(rows: Row[], redKey: string, perfilKey: string, catKey: string): Aggregated {
   const porRedGlobal: Aggregated['porRedGlobal'] = {};
@@ -59,9 +124,9 @@ function aggregate(rows: Row[], redKey: string, perfilKey: string, catKey: strin
     if (/^sin categoria$/i.test(c)) c = 'Sin categoría';
     
     // Mayúsculas coherentes con paleta
-    if (/^invertir para crecer$/i.test(c)) c = 'INVERTIR PARA CRECER';
-    if (/^seguridad$/i.test(c)) c = 'SEGURIDAD';
-    if (/^transparencia publica$/i.test(c)) c = 'TRANSPARENCIA PÚBLICA';
+    if (/invertir.*para.*crecer/i.test(c)) c = 'INVERTIR PARA CRECER';
+    if (/seguridad/i.test(c)) c = 'SEGURIDAD';
+    if (/transparencia.*publica/i.test(c)) c = 'TRANSPARENCIA PÚBLICA';
     if (/^error en procesamiento$/i.test(c)) c = 'Error en procesamiento';
     
     return c;
@@ -109,25 +174,54 @@ function toRechartsData(counts: Record<string, number>) {
 }
 
 export default function Page() {
+  const router = useRouter();
+  
+  // Función para parsear números con comas como separadores de miles
+  const parseNumber = (numStr: string): number => {
+    if (!numStr || numStr.trim() === '') return 0;
+    // Remover comas y parsear como entero
+    const cleaned = numStr.replace(/,/g, '');
+    const parsed = parseInt(cleaned, 10);
+    return isNaN(parsed) ? 0 : parsed;
+  };
+
   const [rows, setRows] = useState<Row[]>([]);
   const [headers, setHeaders] = useState<string[]>([]);
+  const [csvLoaded, setCsvLoaded] = useState(false);
   const [redKey, setRedKey] = useState('Red');
   const [perfilKey, setPerfilKey] = useState('Perfil');
   const [catKey, setCatKey] = useState('categoria');
-  const [modo, setModo] = useState<'global' | 'perfil' | 'mosaico'>('global');
-  const [red, setRed] = useState('Facebook');
+  const [modo, setModo] = useState<'global' | 'perfil' | 'mosaico'>('mosaico');
+  const [red, setRed] = useState('Instagram');
   const [perfil, setPerfil] = useState('');
   const [catOrder, setCatOrder] = useState('SEGURIDAD');
   const [dirOrder, setDirOrder] = useState<'asc' | 'desc'>('desc');
   const [isComparing, setIsComparing] = useState(false);
-  const [redA, setRedA] = useState('Facebook');
+  const [ordenarPorImpacto, setOrdenarPorImpacto] = useState(false);
+  const [redA, setRedA] = useState('Instagram');
   const [perfilA, setPerfilA] = useState('');
-  const [redB, setRedB] = useState('Instagram');
+  const [redB, setRedB] = useState('Facebook');
   const [perfilB, setPerfilB] = useState('');
   
   // Estados para el filtro de fechas
   const [fechaInicio, setFechaInicio] = useState('');
   const [fechaFin, setFechaFin] = useState('');
+
+  // Cargar datos del localStorage al iniciar
+  useEffect(() => {
+    const savedData = localStorage.getItem('csvData');
+    if (savedData) {
+      try {
+        const parsedData = JSON.parse(savedData);
+        setRows(parsedData);
+        setHeaders(Object.keys(parsedData[0] || {}));
+        setCsvLoaded(true);
+      } catch (error) {
+        console.error('Error cargando datos guardados:', error);
+        localStorage.removeItem('csvData');
+      }
+    }
+  }, []);
   const [fechaMin, setFechaMin] = useState('');
   const [fechaMax, setFechaMax] = useState('');
 
@@ -175,6 +269,12 @@ export default function Page() {
   }, [rows, fechaInicio, fechaFin]);
 
   const aggregated = useMemo(() => aggregate(filteredRows, redKey, perfilKey, catKey), [filteredRows, redKey, perfilKey, catKey]);
+  
+  // Calcular impacto por perfil (impresiones)
+  const profileImpact = useMemo(() => 
+    calculateImpactByProfile(filteredRows, redKey, perfilKey, catKey, parseNumber), 
+    [filteredRows, redKey, perfilKey, catKey]
+  );
 
   useEffect(() => {
     // inicializa perfiles por defecto
@@ -194,8 +294,12 @@ export default function Page() {
       complete: (res) => {
         const data = (res.data || []).filter(Boolean);
         setRows(data);
+        setCsvLoaded(true);
         const cols = res.meta.fields || [];
         setHeaders(cols);
+        
+        // Guardar en localStorage para persistencia
+        localStorage.setItem('csvData', JSON.stringify(data));
         
         // heurística leve para detectar columnas
         const redCandidate = cols.find(c => c.toLowerCase() === 'red') || redKey;
@@ -223,14 +327,27 @@ export default function Page() {
   function sortedPerfilesByCategory(currentRed: string, category: string, direction: 'asc' | 'desc') {
     const table = aggregated.porPerfil[currentRed] || {};
     const perfiles = Object.keys(table);
-    return perfiles.sort((a, b) => {
-      const av = table[a]?.[category] ?? 0;
-      const bv = table[b]?.[category] ?? 0;
-      return direction === 'asc' ? av - bv : bv - av;
-    });
+    
+    if (ordenarPorImpacto) {
+      // Ordenar por impresiones (impacto) usando la categoría seleccionada en "Ordenar por"
+      return perfiles.sort((a, b) => {
+        const av = profileImpact[currentRed]?.[a]?.[category] || 0;
+        const bv = profileImpact[currentRed]?.[b]?.[category] || 0;
+        
+        return direction === 'asc' ? av - bv : bv - av;
+      });
+    } else {
+      // Ordenar por número de publicaciones (comportamiento original)
+      return perfiles.sort((a, b) => {
+        const av = table[a]?.[category] ?? 0;
+        const bv = table[b]?.[category] ?? 0;
+        return direction === 'asc' ? av - bv : bv - av;
+      });
+    }
   }
 
   // Componente personalizado para el tooltip
+  // Tooltip personalizado estilo Apple
   const CustomTooltip = ({ active, payload, label }: any) => {
     if (active && payload && payload.length) {
       const data = payload[0];
@@ -239,18 +356,52 @@ export default function Page() {
       
       return (
         <div style={{
-          background: 'white',
-          padding: '12px',
-          border: '1px solid #e5e7eb',
-          borderRadius: '8px',
-          boxShadow: '0 10px 15px -3px rgba(0, 0, 0, 0.1)',
-          fontSize: '14px'
+          background: 'rgba(255, 255, 255, 0.95)',
+          backdropFilter: 'blur(20px)',
+          padding: '16px 20px',
+          border: '1px solid rgba(255, 255, 255, 0.2)',
+          borderRadius: '16px',
+          boxShadow: '0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 8px 10px -6px rgba(0, 0, 0, 0.1)',
+          fontSize: '14px',
+          fontFamily: "'SF Pro Display', -apple-system, BlinkMacSystemFont, sans-serif",
+          minWidth: '200px'
         }}>
-          <p style={{ margin: '0 0 4px 0', fontWeight: '500', color: '#111827' }}>
-            {data.name}
+          <div style={{ 
+            display: 'flex', 
+            alignItems: 'center', 
+            gap: '8px',
+            marginBottom: '8px'
+          }}>
+            <div style={{
+              width: '12px',
+              height: '12px',
+              borderRadius: '50%',
+              background: data.color
+            }}></div>
+            <p style={{ 
+              margin: 0, 
+              fontWeight: '600', 
+              color: '#1D1D1F',
+              fontSize: '16px'
+            }}>
+              {data.name}
+            </p>
+          </div>
+          <p style={{ 
+            margin: 0, 
+            color: '#8E8E93',
+            fontSize: '14px',
+            fontWeight: '500'
+          }}>
+            {data.value.toLocaleString()} publicaciones
           </p>
-          <p style={{ margin: 0, color: '#6b7280' }}>
-            {data.value.toLocaleString()} publicaciones ({percentage}%)
+          <p style={{ 
+            margin: '4px 0 0 0', 
+            color: '#007AFF',
+            fontSize: '18px',
+            fontWeight: '700'
+          }}>
+            {percentage}%
           </p>
         </div>
       );
@@ -258,34 +409,49 @@ export default function Page() {
     return null;
   };
 
-  // Componente personalizado para las etiquetas
+  // Etiquetas personalizadas estilo Apple (sin líneas para simplicidad)
   const renderCustomLabel = (entry: any) => {
     const { cx, cy, midAngle, innerRadius, outerRadius, value, total } = entry;
-    const radius = innerRadius + (outerRadius - innerRadius) * 0.5;
+    const radius = outerRadius + 25; // Más lejos del centro
     const x = cx + radius * Math.cos(-midAngle * Math.PI / 180);
     const y = cy + radius * Math.sin(-midAngle * Math.PI / 180);
+    
     const percentage = total ? ((value / total) * 100).toFixed(1) : '0';
     
     // Solo mostrar etiquetas para segmentos > 5%
     if (parseFloat(percentage) < 5) return null;
     
     return (
-      <text 
-        x={x} 
-        y={y} 
-        fill="white" 
-        textAnchor={x > cx ? 'start' : 'end'} 
-        dominantBaseline="central"
-        fontSize="12"
-        fontWeight="600"
-        style={{ textShadow: '0 1px 2px rgba(0,0,0,0.5)' }}
-      >
-        {percentage}%
-      </text>
+      <g>
+        {/* Etiqueta con fondo glassmorphism */}
+        <rect
+          x={x - 18}
+          y={y - 10}
+          width="36"
+          height="20"
+          rx="10"
+          fill="rgba(255, 255, 255, 0.9)"
+          stroke="rgba(0, 122, 255, 0.2)"
+          strokeWidth="1"
+          filter="drop-shadow(0 2px 8px rgba(0,0,0,0.1))"
+        />
+        <text 
+          x={x} 
+          y={y + 1}
+          fill="#007AFF" 
+          textAnchor="middle" 
+          dominantBaseline="central"
+          fontSize="11"
+          fontWeight="700"
+          fontFamily="'SF Pro Display', -apple-system, BlinkMacSystemFont, sans-serif"
+        >
+          {percentage}%
+        </text>
+      </g>
     );
   };
 
-  function renderPieChart(counts: Record<string, number>, title?: string, totalDenominator?: number, isMosaic = false) {
+  function renderPieChart(counts: Record<string, number>, title?: string, totalDenominator?: number, isMosaic = false, perfilName?: string) {
     const data = toRechartsData(counts);
     const total = typeof totalDenominator === 'number' ? totalDenominator : data.reduce((a, b) => a + b.value, 0);
     
@@ -295,10 +461,42 @@ export default function Page() {
     if (isMosaic) {
       return (
         <div className="mosaic-chart-container">
-          {/* Título alineado a la izquierda */}
+          {/* Título alineado a la izquierda - clickeable */}
           {title && (
-            <h3 className="mosaic-title">
-              {title}
+            <h3 
+              className="mosaic-title"
+              onClick={() => {
+                if (isMosaic && perfilName) {
+                  // Guardar datos en localStorage para la página de detalle
+                  localStorage.setItem('csvData', JSON.stringify(rows));
+                  // Navegar a la página de detalle
+                  router.push(`/perfil/${encodeURIComponent(red)}/${encodeURIComponent(perfilName)}`);
+                }
+              }}
+              style={{
+                cursor: isMosaic && perfilName ? 'pointer' : 'default',
+                transition: 'all 0.2s ease',
+                ...(isMosaic && perfilName ? {
+                  ':hover': {
+                    color: '#007AFF',
+                    transform: 'translateY(-1px)'
+                  }
+                } : {})
+              }}
+              onMouseEnter={(e) => {
+                if (isMosaic && perfilName) {
+                  e.currentTarget.style.color = '#007AFF';
+                  e.currentTarget.style.transform = 'translateY(-1px)';
+                }
+              }}
+              onMouseLeave={(e) => {
+                if (isMosaic && perfilName) {
+                  e.currentTarget.style.color = '#1D1D1F';
+                  e.currentTarget.style.transform = 'translateY(0)';
+                }
+              }}
+            >
+              {title} {isMosaic && perfilName && <span style={{ fontSize: '14px', opacity: 0.6 }}>→</span>}
             </h3>
           )}
           
@@ -306,6 +504,11 @@ export default function Page() {
           <div className="mosaic-chart-wrapper">
             <ResponsiveContainer width="100%" height="100%">
               <PieChart>
+                <defs>
+                  <filter id="shadow-mosaic" x="-50%" y="-50%" width="200%" height="200%">
+                    <feDropShadow dx="0" dy="4" stdDeviation="8" floodColor="rgba(0,0,0,0.1)"/>
+                  </filter>
+                </defs>
                 <Pie
                   data={dataWithTotal}
                   cx="50%"
@@ -316,8 +519,11 @@ export default function Page() {
                   innerRadius={35}
                   fill="#8884d8"
                   dataKey="value"
-                  stroke="#ffffff"
-                  strokeWidth={2}
+                  stroke="rgba(255, 255, 255, 0.8)"
+                  strokeWidth={3}
+                  filter="url(#shadow-mosaic)"
+                  animationBegin={0}
+                  animationDuration={800}
                 >
                   {dataWithTotal.map((entry, index) => (
                     <Cell key={`cell-${index}`} fill={entry.color} />
@@ -349,50 +555,92 @@ export default function Page() {
       <div className="chart-container">
         {title && (
           <h3 style={{
-            margin: '0 0 1rem 0',
-            fontSize: '1.125rem',
-            fontWeight: '600',
-            color: '#111827',
+            margin: '0 0 1.5rem 0',
+            fontSize: '20px',
+            fontWeight: '700',
+            color: '#1D1D1F',
             textAlign: 'center',
-            lineHeight: '1.2'
+            lineHeight: '1.2',
+            fontFamily: "'SF Pro Display', -apple-system, BlinkMacSystemFont, sans-serif"
           }}>
             {title}
           </h3>
         )}
         <ResponsiveContainer width="100%" height="85%">
-          <PieChart margin={{ top: 5, right: 5, left: 5, bottom: 5 }}>
+          <PieChart>
+            <defs>
+              <filter id="shadow-large" x="-50%" y="-50%" width="200%" height="200%">
+                <feDropShadow dx="0" dy="8" stdDeviation="12" floodColor="rgba(0,0,0,0.15)"/>
+              </filter>
+            </defs>
             <Pie
               data={dataWithTotal}
               cx="50%"
               cy="50%"
               labelLine={false}
               label={renderCustomLabel}
-              outerRadius={80}
-              innerRadius={40}
+              outerRadius={90}
+              innerRadius={35}
               fill="#8884d8"
               dataKey="value"
-              stroke="#ffffff"
-              strokeWidth={2}
+              stroke="rgba(255, 255, 255, 0.9)"
+              strokeWidth={3}
+              filter="url(#shadow-large)"
+              animationBegin={0}
+              animationDuration={1200}
             >
               {dataWithTotal.map((entry, index) => (
                 <Cell key={`cell-${index}`} fill={entry.color} />
               ))}
             </Pie>
             <Tooltip content={<CustomTooltip />} />
-            <Legend 
-              verticalAlign="bottom" 
-              height={36}
-              iconType="circle"
-              wrapperStyle={{
-                paddingTop: '16px',
-                fontSize: '12px',
-                lineHeight: '1.4'
-              }}
-              layout="horizontal"
-              align="center"
-            />
           </PieChart>
         </ResponsiveContainer>
+        
+        {/* Leyenda personalizada estilo Apple */}
+        <div style={{
+          display: 'flex',
+          flexWrap: 'wrap',
+          justifyContent: 'center',
+          gap: '12px',
+          marginTop: '20px',
+          padding: '16px',
+          background: 'rgba(255, 255, 255, 0.6)',
+          borderRadius: '12px',
+          backdropFilter: 'blur(8px)'
+        }}>
+          {dataWithTotal.map((entry, index) => (
+            <div key={index} style={{
+              display: 'flex',
+              alignItems: 'center',
+              gap: '8px',
+              padding: '8px 12px',
+              background: 'rgba(255, 255, 255, 0.8)',
+              borderRadius: '20px',
+              fontSize: '13px',
+              fontWeight: '500',
+              color: '#1D1D1F',
+              border: `1px solid ${entry.color}30`,
+              fontFamily: "'SF Pro Display', -apple-system, BlinkMacSystemFont, sans-serif"
+            }}>
+              <div style={{
+                width: '12px',
+                height: '12px',
+                borderRadius: '50%',
+                background: entry.color,
+                boxShadow: `0 0 0 2px ${entry.color}20`
+              }}></div>
+              <span>{entry.name}</span>
+              <span style={{ 
+                color: '#8E8E93', 
+                fontSize: '12px',
+                fontWeight: '400'
+              }}>
+                ({((entry.value / total) * 100).toFixed(1)}%)
+              </span>
+            </div>
+          ))}
+        </div>
       </div>
     );
   }
@@ -404,34 +652,35 @@ export default function Page() {
   const perfilTotal = useMemo(() => aggregated.totalPorPerfil?.[red]?.[perfil] || 0, [aggregated, red, perfil]);
 
   return (
-    <div>
-      {/* Header moderno */}
-      <header className="header">
-        <div className="header-content">
-          <div className="brand">
-            <div className="logo">
-              <svg width="24" height="24" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" />
-              </svg>
-            </div>
-            <div className="brand-text">
-              <h1>Análisis por Red Social</h1>
-              <p>Visualiza indicadores por categoría desde tu CSV</p>
+    <div className="dashboard">
+      <header className="dashboard-header">
+        <nav className="dashboard-nav">
+          <div className="dashboard-brand">
+            <div className="dashboard-logo">📊</div>
+            <div>
+              <h1 className="dashboard-title">Analytics Dashboard</h1>
+              <p className="dashboard-subtitle">Análisis de publicaciones por categoría</p>
             </div>
           </div>
           <button 
             className={`compare-btn ${isComparing ? 'active' : ''}`}
-            onClick={() => setIsComparing(v => !v)}
+            onClick={() => setIsComparing(!isComparing)}
           >
-            🔀 Comparar perfiles
+            {isComparing ? '✕' : '⚖️'} {isComparing ? 'Cancelar' : 'Comparar'}
           </button>
-        </div>
+        </nav>
       </header>
 
-      <div className="container">
+      <main className="dashboard-main">
+
         {/* Panel de controles */}
-        <div className="glass-card">
-          <div className="controls-grid">
+        <section className="controls-section">
+          <div className="glass-card">
+            <div className="controls-header">
+              <div className="controls-icon">⚙️</div>
+              <h2 className="controls-title">Configuración</h2>
+            </div>
+            <div className="controls-grid">
             <div className="form-group">
               <label className="form-label">Cargar CSV</label>
               <div className="file-input">
@@ -445,9 +694,30 @@ export default function Page() {
                     if (f) handleCSV(f);
                   }} 
                 />
-                <label htmlFor="file-upload" className={`file-input-label ${rows.length > 0 ? 'loaded' : ''}`}>
-                  {rows.length > 0 ? `✅ ${rows.length.toLocaleString()} filas cargadas` : '📁 Seleccionar archivo CSV'}
+                <label htmlFor="file-upload" className={`file-input-label ${csvLoaded ? 'loaded' : ''}`}>
+                  {csvLoaded ? `✅ ${rows.length.toLocaleString()} filas cargadas` : '📁 Seleccionar archivo CSV'}
                 </label>
+                
+                {csvLoaded && (
+                  <button 
+                    type="button"
+                    onClick={() => {
+                      localStorage.removeItem('csvData');
+                      setRows([]);
+                      setHeaders([]);
+                      setCsvLoaded(false);
+                      setFechaInicio('');
+                      setFechaFin('');
+                      if (fileInputRef.current) {
+                        fileInputRef.current.value = '';
+                      }
+                    }}
+                    className="date-clear-btn"
+                    style={{ marginLeft: '8px' }}
+                  >
+                    🗑️ Limpiar datos
+                  </button>
+                )}
               </div>
             </div>
 
@@ -479,23 +749,18 @@ export default function Page() {
 
             <div className="form-group">
               <label className="form-label">Filtros</label>
-              <button 
-                onClick={() => {
-                  setFechaInicio('');
-                  setFechaFin('');
-                }}
-                disabled={!fechaInicio && !fechaFin}
-                className="form-input"
-                style={{
-                  cursor: 'pointer',
-                  backgroundColor: (!fechaInicio && !fechaFin) ? '#f3f4f6' : '#fee2e2',
-                  color: (!fechaInicio && !fechaFin) ? '#9ca3af' : '#dc2626',
-                  border: '1px solid #d1d5db',
-                  textAlign: 'center'
-                }}
-              >
-                🗑️ Limpiar fechas
-              </button>
+              <div className="date-controls">
+                <button 
+                  onClick={() => {
+                    setFechaInicio('');
+                    setFechaFin('');
+                  }}
+                  disabled={!fechaInicio && !fechaFin}
+                  className="date-clear-btn"
+                >
+                  🗑️ Limpiar fechas
+                </button>
+              </div>
             </div>
 
             <div className="form-group">
@@ -563,14 +828,31 @@ export default function Page() {
                 <option value="asc">↑ Menor → mayor</option>
               </select>
             </div>
-          </div>
 
-          {/* Panel de comparación */}
-          <div className={`compare-panel ${isComparing ? 'open' : ''}`}>
-            <div className="compare-panel-header">
-              <h3>Comparar perfiles</h3>
-              <span className="hint">Selecciona Red/Perfil A y B</span>
+            <div className="form-group">
+              <label className="form-label">
+                Criterio de ordenamiento <span style={{color: 'var(--system-blue)', fontSize: '0.75rem'}}>🎯</span>
+              </label>
+              <select 
+                value={ordenarPorImpacto ? 'impacto' : 'publicaciones'} 
+                onChange={e => setOrdenarPorImpacto(e.target.value === 'impacto')}
+                className="form-select"
+              >
+                <option value="publicaciones">📊 Por cantidad de publicaciones</option>
+                <option value="impacto">🚀 Por impresiones en la categoría</option>
+              </select>
             </div>
+
+
+            </div>
+
+            {/* Panel de comparación */}
+            <div className={`compare-panel ${isComparing ? 'open' : ''}`}>
+              <div className="compare-panel-header">
+                <h3 className="compare-panel-title">Comparar perfiles</h3>
+                <span className="hint">Selecciona Red/Perfil A y B</span>
+              </div>
+              <div className="compare-panel-grid">
             
             <div className="form-group">
               <label className="form-label">Red A</label>
@@ -615,18 +897,25 @@ export default function Page() {
                 {Array.from(aggregated.perfilesPorRed[redB] || []).map(p => <option key={p} value={p}>{p}</option>)}
               </select>
             </div>
+              </div>
+            </div>
           </div>
-        </div>
+        </section>
 
         {/* Área de gráficas */}
-        <div className="glass-card">
-          <div className={`charts-grid ${
-            isComparing 
-              ? 'double' 
-              : modo === 'mosaico' 
-                ? 'triple' 
-                : 'single'
-          }`}>
+        <section className="charts-section">
+          <div className="glass-card">
+            <div className="charts-header">
+              <div className="charts-icon">📈</div>
+              <h2 className="charts-title">Visualizaciones</h2>
+            </div>
+            <div className={`charts-grid ${
+              isComparing 
+                ? 'double' 
+                : modo === 'mosaico' 
+                  ? 'triple' 
+                  : 'single'
+            }`}>
             {/* Global */}
             {!isComparing && modo === 'global' && renderPieChart(globalCounts, `📊 Global · ${red}`, globalTotal)}
 
@@ -638,7 +927,15 @@ export default function Page() {
               (sortedPerfilesByCategory(red, catOrder, dirOrder)).map(p => {
                 const counts = aggregated.porPerfil[red]?.[p] || {};
                 const denom = aggregated.totalPorPerfil?.[red]?.[p] || 0;
-                return <div key={p}>{renderPieChart(counts, p, denom, true)}</div>;
+                
+                // Título con indicador de impacto si está ordenado por impacto
+                let titulo = p;
+                if (ordenarPorImpacto) {
+                  const impacto = profileImpact[red]?.[p]?.[catOrder] || 0;
+                  titulo = `${p} • ${impacto.toLocaleString()} imp.`;
+                }
+                
+                return <div key={p}>{renderPieChart(counts, titulo, denom, true, p)}</div>;
               })
             )}
 
@@ -649,13 +946,31 @@ export default function Page() {
                 {renderPieChart(aggregated.porPerfil[redB]?.[perfilB] || {}, `🔴 ${perfilB} · ${redB}`, aggregated.totalPorPerfil?.[redB]?.[perfilB] || 0)}
               </>
             )}
+            </div>
+          </div>
+        </section>
+      </main>
+
+      {/* Footer con información */}
+      <footer className="dashboard-footer">
+        <div className="footer-stats">
+          <div className="footer-stat">
+            <div className="footer-stat-value">{rows.length.toLocaleString()}</div>
+            <div className="footer-stat-label">Total filas</div>
+          </div>
+          {filteredRows.length !== rows.length && (
+            <div className="footer-stat">
+              <div className="footer-stat-value">{filteredRows.length.toLocaleString()}</div>
+              <div className="footer-stat-label">Filtradas</div>
+            </div>
+          )}
+          <div className="footer-stat">
+            <div className="footer-stat-value">{Object.keys(aggregated.porRedGlobal).length}</div>
+            <div className="footer-stat-label">Redes</div>
           </div>
         </div>
-
-        {/* Footer con información */}
-        <div className="footer">
-          <p>📄 Fuente: CSV cargado ({rows.length.toLocaleString()} filas{filteredRows.length !== rows.length ? `, ${filteredRows.length.toLocaleString()} filtradas` : ''})</p>
-          <p>🔍 Columnas detectadas: Red={redKey}, Perfil={perfilKey}, Categoría={catKey}</p>
+        <div className="footer-info">
+          <p>🔍 Columnas: Red={redKey}, Perfil={perfilKey}, Categoría={catKey}</p>
           {fechaMin && fechaMax && (
             <p>📅 Rango disponible: {fechaMin} a {fechaMax}</p>
           )}
@@ -663,7 +978,7 @@ export default function Page() {
             <p>🎯 Filtro activo: {fechaInicio || 'inicio'} a {fechaFin || 'fin'}</p>
           )}
         </div>
-      </div>
+      </footer>
     </div>
   );
 }
