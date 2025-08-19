@@ -1,0 +1,414 @@
+
+
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Tortas por Red · v6 Responsive</title>
+  <link rel="preconnect" href="https://cdn.jsdelivr.net"/>
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/chartjs-plugin-datalabels@2"></script>
+  <style>
+    :root {
+      --bg: #ffffff;
+      --text: #0b1220;
+      --muted: #5b6473;
+      --border: #e6e8ee;
+      --card: rgba(255,255,255,0.76);
+      --accent: #2563eb;
+      --accent-2: #0ea5e9;
+      --ring: rgba(37,99,235,.18);
+      --panel: #f7f9fc;
+    }
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      color: var(--text);
+      font-family: ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, Helvetica, Arial;
+      background:
+        radial-gradient(900px 500px at 15% -10%, #eaf2ff 0%, transparent 60%) no-repeat,
+        radial-gradient(1200px 700px at 110% 10%, #e9fbff 0%, transparent 60%) no-repeat,
+        #fff;
+    }
+    header { display:flex; align-items:center; justify-content:space-between; padding: 20px 16px 8px 16px; }
+    .brand { display:flex; align-items:center; gap:12px; }
+    .logo { width:32px; height:32px; border-radius:10px; background: conic-gradient(from 120deg, var(--accent), var(--accent-2)); box-shadow: 0 8px 22px rgba(37,99,235,.24);}
+    h1 { margin:0; font-size:20px; letter-spacing:.2px; }
+    .sub { color: var(--muted); font-size:12px; margin-top:4px; }
+    .shell { padding: 0 16px 20px; }
+    .controls { display:grid; gap:10px; grid-template-columns: repeat(6, 1fr); margin-bottom: 14px; }
+    @media (max-width: 1024px) {
+      .controls { grid-template-columns: repeat(3, 1fr); }
+    }
+    @media (max-width: 640px) {
+      header { flex-direction: column; align-items: flex-start; gap: 10px; }
+      .controls { grid-template-columns: 1fr; }
+    }
+    .card {
+      background: var(--card);
+      -webkit-backdrop-filter: blur(8px);
+      backdrop-filter: blur(8px);
+      border:1px solid var(--border);
+      border-radius:16px;
+      padding:12px;
+      box-shadow: 0 8px 30px rgba(2,6,23,0.06);
+    }
+    label { display:block; font-size:12px; color:var(--muted); margin-bottom:4px; }
+    select {
+      width:100%; background:#fff; color:var(--text);
+      border:1px solid var(--border); border-radius:12px; padding:10px 12px; font-size:14px; outline:none;
+      transition: box-shadow .15s ease, border-color .15s ease;
+    }
+    select:focus { border-color: var(--accent); box-shadow: 0 0 0 5px var(--ring); }
+    .btn {
+      user-select:none; cursor:pointer; border:1px solid var(--border); background:#fff;
+      padding:10px 12px; border-radius:12px; font-size:14px;
+      transition: box-shadow .15s ease, border-color .15s ease, transform .02s ease;
+    }
+    .btn:active { transform: translateY(1px); }
+    .btn-primary { border-color: #c7d2fe; background: linear-gradient(180deg,#ffffff,#f5f7ff); }
+    .btn-primary.active { border-color: var(--accent); box-shadow: 0 0 0 5px var(--ring); }
+    .row { display:grid; grid-template-columns:1fr; gap:12px; }
+    @media (min-width: 900px) { .row.cols-2 { grid-template-columns: 1fr 1fr; } .row.cols-3 { grid-template-columns: 1fr 1fr 1fr; } }
+    .chart-wrap { position:relative; height: 340px; background:#fff; border:1px solid var(--border); border-radius:16px; padding:12px; }
+    @media (max-width: 640px) {
+      .chart-wrap { height: 260px; padding:10px; }
+    }
+    .compare-panel {
+      grid-column: 1 / -1;
+      display: grid; grid-template-columns: repeat(4, 1fr); gap: 10px;
+      background: var(--panel);
+      border:1px dashed var(--border);
+      border-radius: 14px;
+      padding: 10px;
+      overflow: hidden;
+      max-height: 0;
+      opacity: 0;
+      transform: translateY(-6px);
+      transition: max-height .35s ease, opacity .25s ease, transform .25s ease;
+    }
+    .compare-panel.open { max-height: 220px; opacity: 1; transform: translateY(0);}
+    @media (max-width: 640px) {
+      .compare-panel { grid-template-columns: repeat(2, 1fr); }
+    }
+    .hint { font-size: 12px; color: var(--muted); margin-left: 6px; }
+    footer { margin-top: 14px; color: var(--muted); font-size: 12px; }
+  </style>
+</head>
+<body>
+  <header>
+    <div class="brand">
+      <div class="logo"></div>
+      <div>
+        <h1>Tortas por Red · v6 Responsive</h1>
+        <div class="sub">Diseño adaptado a móvil · Leyenda abajo en pantallas pequeñas · Porcentajes internos</div>
+      </div>
+    </div>
+    <button id="compareToggle" class="btn btn-primary">🔀 Comparar perfiles</button>
+  </header>
+
+  <div class="shell">
+    <div class="card controls">
+      <div>
+        <label for="modo">Modo</label>
+        <select id="modo">
+          <option value="global">Global</option>
+          <option value="perfil">Por perfil</option>
+          <option value="mosaico">Mosaico</option>
+        </select>
+      </div>
+
+      <div>
+        <label for="red">Red</label>
+        <select id="red">
+          <option value="Facebook">Facebook</option>
+          <option value="Instagram">Instagram</option>
+        </select>
+      </div>
+
+      <div id="perfilSelectWrap" style="display:none;">
+        <label for="perfil">Perfil</label>
+        <select id="perfil"></select>
+      </div>
+
+      <div>
+        <label for="catOrder">Ordenar perfiles por categoría <span class="hint">(solo mosaico)</span></label>
+        <select id="catOrder"></select>
+      </div>
+
+      <div>
+        <label for="dirOrder">Orden</label>
+        <select id="dirOrder">
+          <option value="desc">Mayor → menor</option>
+          <option value="asc">Menor → mayor</option>
+        </select>
+      </div>
+
+      <div></div> <!-- spacer -->
+
+      <!-- Panel de comparación (desplegable) -->
+      <div id="comparePanel" class="compare-panel">
+        <div style="grid-column: 1 / -1; display:flex; align-items:center; justify-content:space-between; margin-bottom:2px;">
+          <strong>Comparar perfiles</strong>
+          <span class="hint">Selecciona Red/Perfil A y B</span>
+        </div>
+        <div>
+          <label for="redA">Red A</label>
+          <select id="redA">
+            <option value="Facebook">Facebook</option>
+            <option value="Instagram">Instagram</option>
+          </select>
+        </div>
+        <div>
+          <label for="perfilA">Perfil A</label>
+          <select id="perfilA"></select>
+        </div>
+        <div>
+          <label for="redB">Red B</label>
+          <select id="redB">
+            <option value="Facebook">Facebook</option>
+            <option value="Instagram">Instagram</option>
+          </select>
+        </div>
+        <div>
+          <label for="perfilB">Perfil B</label>
+          <select id="perfilB"></select>
+        </div>
+      </div>
+    </div>
+
+    <div class="card">
+      <div id="canvasArea" class="row">
+        <div class="chart-wrap">
+          <canvas id="mainChart"></canvas>
+        </div>
+      </div>
+    </div>
+
+    <footer>Fuente: porcentaje_categorias_facebook_limpio.csv & porcentaje_categorias_instagram.csv</footer>
+  </div>
+
+  <script>
+    const PAYLOAD = {"Facebook": {"global": {"labels": ["Sin categoría", "SEGURIDAD", "INVERTIR PARA CRECER", "TRANSPARENCIA PÚBLICA"], "values": [459, 146, 99, 59]}, "perfiles": ["Alcaldía de Cali", "Alejandro Eder", "Casa Matria", "DAGMA", "Departamento Administrativo de Contratación Pública de Cali", "Departamento Administrativo de Control Disciplinario Interno de Instrucción", "Departamento Administrativo de Desarrollo e Innovación Institucional", "Departamento Administrativo de Hacienda de Cali", "Departamento Administrativo de Planeación Municipal", "Empresa de Desarrollo y Renovación Urbana", "Petronio Álvarez", "Secretaría de Bienestar Social", "Secretaría de Cultura de Cali", "Secretaría de Desarrollo Económico", "Secretaría de Desarrollo Territorial y Participación Ciudadana", "Secretaría de Educación de Cali", "Secretaría de Gobierno", "Secretaría de Infraestructura", "Secretaría de Movilidad de Cali", "Secretaría de Paz y Cultura Ciudadana", "Secretaría de Salud Pública", "Secretaría de Seguridad y Justicia de Cali", "Secretaría de Turismo", "Secretaría de Vivienda Social y Hábitat", "Secretaría del Deporte y la Recreación", "Secretaría para la Gestión del Riesgo de Emergencias y Desastres", "Tecnologías de la Información y las Comunicaciones de Cali", "Unidad Administrativa Especial de Gestión de Bienes y Servicios de Cali", "Unidad Administrativa Especial de Protección Animal Cali", "Unidad Administrativa Especial de Servicios Públicos Municipales Uaespm", "Yawa"], "data_por_perfil": {"Alcaldía de Cali": {"labels": ["Sin categoría", "SEGURIDAD", "INVERTIR PARA CRECER", "TRANSPARENCIA PÚBLICA"], "values": [40, 15, 10, 1]}, "Alejandro Eder": {"labels": ["Sin categoría", "SEGURIDAD", "INVERTIR PARA CRECER", "TRANSPARENCIA PÚBLICA"], "values": [22, 9, 5, 1]}, "Casa Matria": {"labels": ["Sin categoría", "INVERTIR PARA CRECER"], "values": [4, 1]}, "DAGMA": {"labels": ["Sin categoría", "INVERTIR PARA CRECER"], "values": [13, 1]}, "Departamento Administrativo de Contratación Pública de Cali": {"labels": ["TRANSPARENCIA PÚBLICA", "Sin categoría", "SEGURIDAD"], "values": [19, 2, 1]}, "Departamento Administrativo de Control Disciplinario Interno de Instrucción": {"labels": ["Sin categoría", "TRANSPARENCIA PÚBLICA"], "values": [1, 1]}, "Departamento Administrativo de Desarrollo e Innovación Institucional": {"labels": ["Sin categoría", "TRANSPARENCIA PÚBLICA"], "values": [2, 1]}, "Departamento Administrativo de Hacienda de Cali": {"labels": ["Sin categoría", "TRANSPARENCIA PÚBLICA"], "values": [2, 2]}, "Departamento Administrativo de Planeación Municipal": {"labels": ["Sin categoría", "TRANSPARENCIA PÚBLICA", "SEGURIDAD"], "values": [9, 2, 1]}, "Empresa de Desarrollo y Renovación Urbana": {"labels": ["INVERTIR PARA CRECER", "Sin categoría", "TRANSPARENCIA PÚBLICA"], "values": [2, 2, 1]}, "Petronio Álvarez": {"labels": ["Sin categoría"], "values": [15]}, "Secretaría de Bienestar Social": {"labels": ["Sin categoría", "SEGURIDAD", "INVERTIR PARA CRECER", "TRANSPARENCIA PÚBLICA"], "values": [39, 3, 1, 1]}, "Secretaría de Cultura de Cali": {"labels": ["Sin categoría", "INVERTIR PARA CRECER", "TRANSPARENCIA PÚBLICA"], "values": [18, 2, 1]}, "Secretaría de Desarrollo Económico": {"labels": ["Sin categoría", "INVERTIR PARA CRECER", "TRANSPARENCIA PÚBLICA"], "values": [13, 12, 2]}, "Secretaría de Desarrollo Territorial y Participación Ciudadana": {"labels": ["Sin categoría", "TRANSPARENCIA PÚBLICA", "INVERTIR PARA CRECER", "SEGURIDAD"], "values": [22, 6, 4, 1]}, "Secretaría de Educación de Cali": {"labels": ["Sin categoría", "INVERTIR PARA CRECER", "TRANSPARENCIA PÚBLICA"], "values": [25, 14, 3]}, "Secretaría de Gobierno": {"labels": ["Sin categoría", "TRANSPARENCIA PÚBLICA", "INVERTIR PARA CRECER", "SEGURIDAD"], "values": [4, 4, 3, 2]}, "Secretaría de Infraestructura": {"labels": ["INVERTIR PARA CRECER", "TRANSPARENCIA PÚBLICA", "SEGURIDAD", "Sin categoría"], "values": [19, 2, 1, 1]}, "Secretaría de Movilidad de Cali": {"labels": ["SEGURIDAD", "Sin categoría", "INVERTIR PARA CRECER"], "values": [44, 6, 1]}, "Secretaría de Paz y Cultura Ciudadana": {"labels": ["SEGURIDAD", "Sin categoría", "TRANSPARENCIA PÚBLICA"], "values": [12, 7, 2]}, "Secretaría de Salud Pública": {"labels": ["Sin categoría", "SEGURIDAD", "TRANSPARENCIA PÚBLICA"], "values": [22, 4, 1]}, "Secretaría de Seguridad y Justicia de Cali": {"labels": ["SEGURIDAD", "INVERTIR PARA CRECER", "Sin categoría", "TRANSPARENCIA PÚBLICA"], "values": [34, 2, 1, 1]}, "Secretaría de Turismo": {"labels": ["Sin categoría", "SEGURIDAD"], "values": [32, 1]}, "Secretaría de Vivienda Social y Hábitat": {"labels": ["INVERTIR PARA CRECER", "Sin categoría", "SEGURIDAD", "TRANSPARENCIA PÚBLICA"], "values": [7, 2, 1, 1]}, "Secretaría del Deporte y la Recreación": {"labels": ["Sin categoría", "INVERTIR PARA CRECER"], "values": [109, 1]}, "Secretaría para la Gestión del Riesgo de Emergencias y Desastres": {"labels": ["SEGURIDAD", "INVERTIR PARA CRECER", "Sin categoría", "TRANSPARENCIA PÚBLICA"], "values": [7, 4, 2, 2]}, "Tecnologías de la Información y las Comunicaciones de Cali": {"labels": ["INVERTIR PARA CRECER", "Sin categoría", "TRANSPARENCIA PÚBLICA"], "values": [4, 4, 1]}, "Unidad Administrativa Especial de Gestión de Bienes y Servicios de Cali": {"labels": ["Sin categoría", "TRANSPARENCIA PÚBLICA", "INVERTIR PARA CRECER", "SEGURIDAD"], "values": [8, 4, 3, 3]}, "Unidad Administrativa Especial de Protección Animal Cali": {"labels": ["Sin categoría", "SEGURIDAD"], "values": [10, 2]}, "Unidad Administrativa Especial de Servicios Públicos Municipales Uaespm": {"labels": ["Sin categoría", "SEGURIDAD", "INVERTIR PARA CRECER"], "values": [18, 5, 3]}, "Yawa": {"labels": ["Sin categoría"], "values": [4]}}, "profile_cat_table": {"Alcaldía de Cali": {"Sin categoría": 40, "SEGURIDAD": 15, "INVERTIR PARA CRECER": 10, "TRANSPARENCIA PÚBLICA": 1}, "Alejandro Eder": {"Sin categoría": 22, "SEGURIDAD": 9, "INVERTIR PARA CRECER": 5, "TRANSPARENCIA PÚBLICA": 1}, "Casa Matria": {"Sin categoría": 4, "INVERTIR PARA CRECER": 1}, "DAGMA": {"Sin categoría": 13, "INVERTIR PARA CRECER": 1}, "Departamento Administrativo de Contratación Pública de Cali": {"TRANSPARENCIA PÚBLICA": 19, "Sin categoría": 2, "SEGURIDAD": 1}, "Departamento Administrativo de Control Disciplinario Interno de Instrucción": {"Sin categoría": 1, "TRANSPARENCIA PÚBLICA": 1}, "Departamento Administrativo de Desarrollo e Innovación Institucional": {"Sin categoría": 2, "TRANSPARENCIA PÚBLICA": 1}, "Departamento Administrativo de Hacienda de Cali": {"Sin categoría": 2, "TRANSPARENCIA PÚBLICA": 2}, "Departamento Administrativo de Planeación Municipal": {"Sin categoría": 9, "TRANSPARENCIA PÚBLICA": 2, "SEGURIDAD": 1}, "Empresa de Desarrollo y Renovación Urbana": {"INVERTIR PARA CRECER": 2, "Sin categoría": 2, "TRANSPARENCIA PÚBLICA": 1}, "Petronio Álvarez": {"Sin categoría": 15}, "Secretaría de Bienestar Social": {"Sin categoría": 39, "SEGURIDAD": 3, "INVERTIR PARA CRECER": 1, "TRANSPARENCIA PÚBLICA": 1}, "Secretaría de Cultura de Cali": {"Sin categoría": 18, "INVERTIR PARA CRECER": 2, "TRANSPARENCIA PÚBLICA": 1}, "Secretaría de Desarrollo Económico": {"Sin categoría": 13, "INVERTIR PARA CRECER": 12, "TRANSPARENCIA PÚBLICA": 2}, "Secretaría de Desarrollo Territorial y Participación Ciudadana": {"Sin categoría": 22, "TRANSPARENCIA PÚBLICA": 6, "INVERTIR PARA CRECER": 4, "SEGURIDAD": 1}, "Secretaría de Educación de Cali": {"Sin categoría": 25, "INVERTIR PARA CRECER": 14, "TRANSPARENCIA PÚBLICA": 3}, "Secretaría de Gobierno": {"Sin categoría": 4, "TRANSPARENCIA PÚBLICA": 4, "INVERTIR PARA CRECER": 3, "SEGURIDAD": 2}, "Secretaría de Infraestructura": {"INVERTIR PARA CRECER": 19, "TRANSPARENCIA PÚBLICA": 2, "SEGURIDAD": 1, "Sin categoría": 1}, "Secretaría de Movilidad de Cali": {"SEGURIDAD": 44, "Sin categoría": 6, "INVERTIR PARA CRECER": 1}, "Secretaría de Paz y Cultura Ciudadana": {"SEGURIDAD": 12, "Sin categoría": 7, "TRANSPARENCIA PÚBLICA": 2}, "Secretaría de Salud Pública": {"Sin categoría": 22, "SEGURIDAD": 4, "TRANSPARENCIA PÚBLICA": 1}, "Secretaría de Seguridad y Justicia de Cali": {"SEGURIDAD": 34, "INVERTIR PARA CRECER": 2, "Sin categoría": 1, "TRANSPARENCIA PÚBLICA": 1}, "Secretaría de Turismo": {"Sin categoría": 32, "SEGURIDAD": 1}, "Secretaría de Vivienda Social y Hábitat": {"INVERTIR PARA CRECER": 7, "Sin categoría": 2, "SEGURIDAD": 1, "TRANSPARENCIA PÚBLICA": 1}, "Secretaría del Deporte y la Recreación": {"Sin categoría": 109, "INVERTIR PARA CRECER": 1}, "Secretaría para la Gestión del Riesgo de Emergencias y Desastres": {"SEGURIDAD": 7, "INVERTIR PARA CRECER": 4, "Sin categoría": 2, "TRANSPARENCIA PÚBLICA": 2}, "Tecnologías de la Información y las Comunicaciones de Cali": {"INVERTIR PARA CRECER": 4, "Sin categoría": 4, "TRANSPARENCIA PÚBLICA": 1}, "Unidad Administrativa Especial de Gestión de Bienes y Servicios de Cali": {"Sin categoría": 8, "TRANSPARENCIA PÚBLICA": 4, "INVERTIR PARA CRECER": 3, "SEGURIDAD": 3}, "Unidad Administrativa Especial de Protección Animal Cali": {"Sin categoría": 10, "SEGURIDAD": 2}, "Unidad Administrativa Especial de Servicios Públicos Municipales Uaespm": {"Sin categoría": 18, "SEGURIDAD": 5, "INVERTIR PARA CRECER": 3}, "Yawa": {"Sin categoría": 4}}}, "Instagram": {"global": {"labels": ["Sin categoría", "SEGURIDAD", "INVERTIR PARA CRECER", "TRANSPARENCIA PÚBLICA", "Error en procesamiento"], "values": [405, 125, 76, 30, 1]}, "perfiles": ["alcaldiadecali", "alejoeder", "bienesyservicioscali", "calibienestar", "caliculturacol", "calivivienda", "casamatriacali", "dagmaoficial", "educacioncali", "festsalsacali", "gobiernocali", "hacienda.cali", "infraestructuracali", "movilidadcali", "participacionciudadanacali", "petronioco", "planeacioncali", "proteccionanimalcali", "riesgocali", "secdeportecali", "secpazycccali", "secsaludcali", "secturismocali", "seguridadcali", "ticalcaldiacali", "uaespcali", "yawacali"], "data_por_perfil": {"alcaldiadecali": {"labels": ["Sin categoría", "INVERTIR PARA CRECER", "SEGURIDAD", "TRANSPARENCIA PÚBLICA"], "values": [27, 9, 7, 2]}, "alejoeder": {"labels": ["Sin categoría", "SEGURIDAD", "INVERTIR PARA CRECER", "TRANSPARENCIA PÚBLICA"], "values": [19, 12, 8, 1]}, "bienesyservicioscali": {"labels": ["Sin categoría", "INVERTIR PARA CRECER", "SEGURIDAD", "TRANSPARENCIA PÚBLICA"], "values": [5, 3, 3, 3]}, "calibienestar": {"labels": ["Sin categoría", "SEGURIDAD", "INVERTIR PARA CRECER", "TRANSPARENCIA PÚBLICA"], "values": [32, 3, 2, 2]}, "caliculturacol": {"labels": ["Sin categoría", "INVERTIR PARA CRECER", "SEGURIDAD"], "values": [12, 1, 1]}, "calivivienda": {"labels": ["INVERTIR PARA CRECER", "Sin categoría", "SEGURIDAD", "TRANSPARENCIA PÚBLICA"], "values": [13, 4, 2, 1]}, "casamatriacali": {"labels": ["Sin categoría", "INVERTIR PARA CRECER"], "values": [3, 1]}, "dagmaoficial": {"labels": ["Sin categoría", "INVERTIR PARA CRECER"], "values": [10, 1]}, "educacioncali": {"labels": ["Sin categoría", "INVERTIR PARA CRECER", "TRANSPARENCIA PÚBLICA"], "values": [12, 9, 2]}, "festsalsacali": {"labels": ["Sin categoría"], "values": [1]}, "gobiernocali": {"labels": ["INVERTIR PARA CRECER", "Sin categoría", "TRANSPARENCIA PÚBLICA", "SEGURIDAD"], "values": [3, 3, 3, 1]}, "hacienda.cali": {"labels": ["Sin categoría"], "values": [4]}, "infraestructuracali": {"labels": ["INVERTIR PARA CRECER", "TRANSPARENCIA PÚBLICA", "SEGURIDAD", "Sin categoría"], "values": [11, 2, 1, 1]}, "movilidadcali": {"labels": ["SEGURIDAD", "Sin categoría", "INVERTIR PARA CRECER"], "values": [45, 4, 1]}, "participacionciudadanacali": {"labels": ["Sin categoría", "TRANSPARENCIA PÚBLICA", "INVERTIR PARA CRECER", "Error en procesamiento", "SEGURIDAD"], "values": [22, 6, 3, 1, 1]}, "petronioco": {"labels": ["Sin categoría"], "values": [19]}, "planeacioncali": {"labels": ["Sin categoría", "TRANSPARENCIA PÚBLICA", "SEGURIDAD"], "values": [7, 2, 1]}, "proteccionanimalcali": {"labels": ["Sin categoría", "SEGURIDAD"], "values": [9, 2]}, "riesgocali": {"labels": ["SEGURIDAD", "INVERTIR PARA CRECER", "Sin categoría", "TRANSPARENCIA PÚBLICA"], "values": [8, 3, 3, 2]}, "secdeportecali": {"labels": ["Sin categoría", "INVERTIR PARA CRECER"], "values": [145, 1]}, "secpazycccali": {"labels": ["SEGURIDAD", "Sin categoría", "TRANSPARENCIA PÚBLICA"], "values": [11, 8, 2]}, "secsaludcali": {"labels": ["Sin categoría", "SEGURIDAD"], "values": [16, 3]}, "secturismocali": {"labels": ["Sin categoría"], "values": [16]}, "seguridadcali": {"labels": ["SEGURIDAD", "INVERTIR PARA CRECER", "Sin categoría"], "values": [20, 2, 2]}, "ticalcaldiacali": {"labels": ["Sin categoría", "INVERTIR PARA CRECER", "TRANSPARENCIA PÚBLICA"], "values": [4, 3, 2]}, "uaespcali": {"labels": ["Sin categoría", "SEGURIDAD", "INVERTIR PARA CRECER"], "values": [13, 4, 2]}, "yawacali": {"labels": ["Sin categoría"], "values": [4]}}, "profile_cat_table": {"alcaldiadecali": {"Sin categoría": 27, "INVERTIR PARA CRECER": 9, "SEGURIDAD": 7, "TRANSPARENCIA PÚBLICA": 2}, "alejoeder": {"Sin categoría": 19, "SEGURIDAD": 12, "INVERTIR PARA CRECER": 8, "TRANSPARENCIA PÚBLICA": 1}, "bienesyservicioscali": {"Sin categoría": 5, "INVERTIR PARA CRECER": 3, "SEGURIDAD": 3, "TRANSPARENCIA PÚBLICA": 3}, "calibienestar": {"Sin categoría": 32, "SEGURIDAD": 3, "INVERTIR PARA CRECER": 2, "TRANSPARENCIA PÚBLICA": 2}, "caliculturacol": {"Sin categoría": 12, "INVERTIR PARA CRECER": 1, "SEGURIDAD": 1}, "calivivienda": {"INVERTIR PARA CRECER": 13, "Sin categoría": 4, "SEGURIDAD": 2, "TRANSPARENCIA PÚBLICA": 1}, "casamatriacali": {"Sin categoría": 3, "INVERTIR PARA CRECER": 1}, "dagmaoficial": {"Sin categoría": 10, "INVERTIR PARA CRECER": 1}, "educacioncali": {"Sin categoría": 12, "INVERTIR PARA CRECER": 9, "TRANSPARENCIA PÚBLICA": 2}, "festsalsacali": {"Sin categoría": 1}, "gobiernocali": {"INVERTIR PARA CRECER": 3, "Sin categoría": 3, "TRANSPARENCIA PÚBLICA": 3, "SEGURIDAD": 1}, "hacienda.cali": {"Sin categoría": 4}, "infraestructuracali": {"INVERTIR PARA CRECER": 11, "TRANSPARENCIA PÚBLICA": 2, "SEGURIDAD": 1, "Sin categoría": 1}, "movilidadcali": {"SEGURIDAD": 45, "Sin categoría": 4, "INVERTIR PARA CRECER": 1}, "participacionciudadanacali": {"Sin categoría": 22, "TRANSPARENCIA PÚBLICA": 6, "INVERTIR PARA CRECER": 3, "Error en procesamiento": 1, "SEGURIDAD": 1}, "petronioco": {"Sin categoría": 19}, "planeacioncali": {"Sin categoría": 7, "TRANSPARENCIA PÚBLICA": 2, "SEGURIDAD": 1}, "proteccionanimalcali": {"Sin categoría": 9, "SEGURIDAD": 2}, "riesgocali": {"SEGURIDAD": 8, "INVERTIR PARA CRECER": 3, "Sin categoría": 3, "TRANSPARENCIA PÚBLICA": 2}, "secdeportecali": {"Sin categoría": 145, "INVERTIR PARA CRECER": 1}, "secpazycccali": {"SEGURIDAD": 11, "Sin categoría": 8, "TRANSPARENCIA PÚBLICA": 2}, "secsaludcali": {"Sin categoría": 16, "SEGURIDAD": 3}, "secturismocali": {"Sin categoría": 16}, "seguridadcali": {"SEGURIDAD": 20, "INVERTIR PARA CRECER": 2, "Sin categoría": 2}, "ticalcaldiacali": {"Sin categoría": 4, "INVERTIR PARA CRECER": 3, "TRANSPARENCIA PÚBLICA": 2}, "uaespcali": {"Sin categoría": 13, "SEGURIDAD": 4, "INVERTIR PARA CRECER": 2}, "yawacali": {"Sin categoría": 4}}}};
+    const CAT2COLOR = {"Error en procesamiento": "hsl(0 70% 48% / 0.9)", "INVERTIR PARA CRECER": "hsl(90 70% 48% / 0.9)", "SEGURIDAD": "hsl(180 70% 48% / 0.9)", "TRANSPARENCIA PÚBLICA": "hsl(270 70% 48% / 0.9)", "Sin categoría": "hsl(0 0% 70% / 0.9)"};
+    const ALL_CATS = ["Error en procesamiento", "INVERTIR PARA CRECER", "SEGURIDAD", "Sin categoría", "TRANSPARENCIA PÚBLICA"];
+    Chart.register(ChartDataLabels);
+
+    function colorsFor(labels) { return labels.map(l => CAT2COLOR[l] || "hsl(210 5% 70% / 0.9)"); }
+
+    const modoSel = document.getElementById('modo');
+    const redSel = document.getElementById('red');
+    const perfilSelWrap = document.getElementById('perfilSelectWrap');
+    const perfilSel = document.getElementById('perfil');
+    const canvasArea = document.getElementById('canvasArea');
+    const mainCanvas = document.getElementById('mainChart');
+    const catOrderSel = document.getElementById('catOrder');
+    const dirOrderSel = document.getElementById('dirOrder');
+
+    // Toggle comparar
+    const compareToggle = document.getElementById('compareToggle');
+    const comparePanel = document.getElementById('comparePanel');
+    let isComparing = false;
+
+    // Comparar controls
+    const redA = document.getElementById('redA');
+    const perfilA = document.getElementById('perfilA');
+    const redB = document.getElementById('redB');
+    const perfilB = document.getElementById('perfilB');
+
+    let mainChart = null;
+
+    function populatePerfiles(selectEl, red) {
+      const perfiles = PAYLOAD[red].perfiles;
+      selectEl.innerHTML = '';
+      perfiles.forEach(p => {
+        const opt = document.createElement('option');
+        opt.value = p; opt.textContent = p;
+        selectEl.appendChild(opt);
+      });
+    }
+
+    function populateCategoriasOrden() {
+      catOrderSel.innerHTML = '';
+      ALL_CATS.forEach(c => {
+        const opt = document.createElement('option');
+        opt.value = c; opt.textContent = c;
+        catOrderSel.appendChild(opt);
+      });
+    }
+
+    function legendPosition() {
+      return window.innerWidth < 900 ? 'bottom' : 'right';
+    }
+
+    function datalabelsPercentOptions() {
+      return {
+        formatter: (value, ctx) => {
+          const data = ctx.chart.data.datasets[0].data;
+          const total = data.reduce((a,b) => a + b, 0);
+          const pct = total ? (value / total * 100) : 0;
+          return pct.toFixed(1) + '%';
+        },
+        color: '#111827',
+        font: ctx => {
+          const w = ctx.chart.width || 300;
+          const size = Math.max(9, Math.min(12, Math.round(w / 50)));
+          return { weight: '600', size };
+        },
+        clamp: true
+      };
+    }
+
+    function makeDoughnut(ctx, labels, values, title) {
+      const colors = colorsFor(labels);
+      return new Chart(ctx, {
+        type: 'doughnut',
+        data: { labels, datasets: [{ data: values, backgroundColor: colors, borderWidth: 1, hoverOffset: 6 }] },
+        options: {
+          cutout: '60%',
+          responsive: true,
+          maintainAspectRatio: false,
+          plugins: {
+            legend: { position: legendPosition() },
+            title: { display: !!title, text: title },
+            datalabels: datalabelsPercentOptions()
+          }
+        }
+      });
+    }
+
+    function clearCharts() {
+      const nodes = Array.from(canvasArea.querySelectorAll('canvas'));
+      nodes.forEach((c) => {
+        const chart = Chart.getChart(c);
+        if (chart) chart.destroy();
+        if (c.id !== 'mainChart') c.parentElement.remove();
+      });
+      if (mainChart) { mainChart.destroy(); mainChart = null; }
+      mainCanvas.style.display = 'block';
+      canvasArea.classList.remove('cols-2','cols-3');
+    }
+
+    function renderGlobal() {
+      clearCharts();
+      const red = redSel.value;
+      const g = PAYLOAD[red].global;
+      mainChart = makeDoughnut(mainCanvas.getContext('2d'), g.labels, g.values, `Global · ${red}`);
+    }
+
+    function renderPorPerfil() {
+      clearCharts();
+      const red = redSel.value;
+      const perfil = perfilSel.value || PAYLOAD[red].perfiles[0];
+      const d = PAYLOAD[red].data_por_perfil[perfil];
+      mainChart = makeDoughnut(mainCanvas.getContext('2d'), d.labels, d.values, `${perfil} · ${red}`);
+    }
+
+    function sortedPerfilesByCategory(red, category, direction) {
+      const table = PAYLOAD[red].profile_cat_table;
+      const perfiles = [...PAYLOAD[red].perfiles];
+      perfiles.sort((a,b) => {
+        const av = table[a]?.[category] ?? 0;
+        const bv = table[b]?.[category] ?? 0;
+        return direction === 'asc' ? av - bv : bv - av;
+      });
+      return perfiles;
+    }
+
+    function renderMosaico() {
+      clearCharts();
+      mainCanvas.style.display = 'none';
+      canvasArea.classList.add('cols-3');
+      const red = redSel.value;
+      const category = catOrderSel.value;
+      const direction = dirOrderSel.value;
+      const perfiles = sortedPerfilesByCategory(red, category, direction);
+      perfiles.forEach((perfil) => {
+        const wrap = document.createElement('div');
+        wrap.className = 'chart-wrap';
+        const canv = document.createElement('canvas');
+        wrap.appendChild(canv);
+        canvasArea.appendChild(wrap);
+        const d = PAYLOAD[red].data_por_perfil[perfil];
+        makeDoughnut(canv.getContext('2d'), d.labels, d.values, perfil);
+      });
+    }
+
+    function renderComparar() {
+      clearCharts();
+      mainCanvas.style.display = 'none';
+      canvasArea.classList.add('cols-2');
+
+      const pairs = [
+        [redA.value, perfilA.value || PAYLOAD[redA.value].perfiles[0]],
+        [redB.value, perfilB.value || PAYLOAD[redB.value].perfiles[0]]
+      ];
+      pairs.forEach(([r,p]) => {
+        const wrap = document.createElement('div');
+        wrap.className = 'chart-wrap';
+        const canv = document.createElement('canvas');
+        wrap.appendChild(canv);
+        canvasArea.appendChild(wrap);
+        const d = PAYLOAD[r].data_por_perfil[p];
+        makeDoughnut(canv.getContext('2d'), d.labels, d.values, `${p} · ${r}`);
+      });
+    }
+
+    function onModoChange() {
+      if (isComparing) { renderComparar(); return; }
+      const modo = modoSel.value;
+      if (modo === 'perfil') {
+        perfilSelWrap.style.display = 'block';
+        renderPorPerfil();
+      } else if (modo === 'global') {
+        perfilSelWrap.style.display = 'none';
+        renderGlobal();
+      } else {
+        perfilSelWrap.style.display = 'none';
+        renderMosaico();
+      }
+    }
+
+    // Toggle compare behavior
+    compareToggle.addEventListener('click', () => {
+      isComparing = !isComparing;
+      compareToggle.classList.toggle('active', isComparing);
+      comparePanel.classList.toggle('open', isComparing);
+      onModoChange();
+    });
+
+    // Events
+    modoSel.addEventListener('change', onModoChange);
+    redSel.addEventListener('change', () => { populatePerfiles(perfilSel, redSel.value); onModoChange(); });
+    perfilSel.addEventListener('change', renderPorPerfil);
+    catOrderSel.addEventListener('change', () => { if (!isComparing && modoSel.value === 'mosaico') renderMosaico(); });
+    dirOrderSel.addEventListener('change', () => { if (!isComparing && modoSel.value === 'mosaico') renderMosaico(); });
+
+    // Comparar events
+    function updatePerfilOptions() {
+      populatePerfiles(perfilA, redA.value);
+      populatePerfiles(perfilB, redB.value);
+    }
+    redA.addEventListener('change', () => { updatePerfilOptions(); if (isComparing) renderComparar(); });
+    redB.addEventListener('change', () => { updatePerfilOptions(); if (isComparing) renderComparar(); });
+    perfilA.addEventListener('change', () => { if (isComparing) renderComparar(); });
+    perfilB.addEventListener('change', () => { if (isComparing) renderComparar(); });
+
+    // Handle responsive legend on resize (debounced)
+    let resizeTimer = null;
+    window.addEventListener('resize', () => {
+      clearTimeout(resizeTimer);
+      resizeTimer = setTimeout(() => onModoChange(), 120);
+    });
+
+    // init
+    populatePerfiles(perfilSel, redSel.value);
+    populatePerfiles(perfilA, redA.value);
+    populatePerfiles(perfilB, redB.value);
+    populateCategoriasOrden();
+    renderGlobal();
+  </script>
+</body>
+</html>
+
