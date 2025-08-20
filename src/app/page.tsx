@@ -4,6 +4,8 @@ import { useEffect, useMemo, useRef, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import Papa from 'papaparse';
 import { PieChart, Pie, Cell, ResponsiveContainer, Legend, Tooltip } from 'recharts';
+import CSVUploader from '@/components/CSVUploader';
+import { usePublicaciones } from '@/hooks/usePublicaciones';
 
 type Row = Record<string, string>;
 
@@ -206,6 +208,28 @@ export default function Page() {
   // Estados para el filtro de fechas
   const [fechaInicio, setFechaInicio] = useState('');
   const [fechaFin, setFechaFin] = useState('');
+
+  // Hook para obtener datos de la base de datos
+  const { 
+    data: dbData, 
+    loading: dbLoading, 
+    error: dbError, 
+    refetch: refetchData,
+    stats 
+  } = usePublicaciones({
+    fechaInicio: fechaInicio || undefined,
+    fechaFin: fechaFin || undefined,
+    autoFetch: true
+  });
+
+  // Actualizar rows cuando cambien los datos de la base de datos
+  useEffect(() => {
+    if (dbData && dbData.length > 0) {
+      setRows(dbData);
+      setHeaders(Object.keys(dbData[0]));
+      setCsvLoaded(true);
+    }
+  }, [dbData]);
 
   // Función para guardar datos de forma segura en localStorage
   function safeSetItem(key: string, value: any): boolean {
@@ -691,56 +715,141 @@ export default function Page() {
 
       <main className="dashboard-main">
 
-        {/* Panel de controles */}
-        <section className="controls-section">
-          <div className="glass-card">
-            <div className="controls-header">
-              <div className="controls-icon">⚙️</div>
-              <h2 className="controls-title">Configuración</h2>
+        {/* Panel de controles minimalista */}
+        <section className="controls-section-minimal">
+          <div className="controls-container">
+            <div className="controls-header-minimal">
+              <div className="header-left">
+                <h2 className="controls-title-minimal">⚙️ Configuración</h2>
+              </div>
+              <div className="header-right">
+                {/* Indicadores de estado compactos */}
+                <div className="status-indicators-compact">
+                  {dbLoading && (
+                    <div className="status-badge loading" title="Cargando datos...">⏳</div>
+                  )}
+                  
+                  {dbError && (
+                    <div className="status-badge error" title={`Error: ${dbError}`}>❌</div>
+                  )}
+                  
+                  {stats && (
+                    <div className="status-badge success" title={`${stats.redes.length} redes • ${stats.perfiles.length} perfiles • ${stats.categorias.length} categorías`}>
+                      📊 {stats.totalPublicaciones.toLocaleString()}
+                    </div>
+                  )}
+                  
+                  {csvLoaded && rows.length > 0 && (
+                    <div className="status-badge info" title={`Publicaciones ${fechaInicio || fechaFin ? 'filtradas' : 'totales'}`}>
+                      ✅ {rows.length.toLocaleString()}
+                    </div>
+                  )}
+                </div>
+              </div>
             </div>
-            <div className="controls-grid">
-            <div className="form-group">
-              <label className="form-label">Cargar CSV</label>
-              <div className="file-input">
-                <input 
-                  ref={fileInputRef} 
-                  type="file" 
-                  accept=".csv,text/csv"
-                  id="file-upload"
-                  onChange={e => {
-                    const f = e.target.files?.[0];
-                    if (f) handleCSV(f);
-                  }} 
-                />
-                <label htmlFor="file-upload" className={`file-input-label ${csvLoaded ? 'loaded' : ''}`}>
-                  {csvLoaded ? `✅ ${rows.length.toLocaleString()} filas cargadas` : '📁 Seleccionar archivo CSV'}
-                </label>
-                
-                {csvLoaded && (
-                  <button 
-                    type="button"
-                    onClick={() => {
-                      localStorage.removeItem('csvData');
-                      setRows([]);
-                      setHeaders([]);
-                      setCsvLoaded(false);
-                      setFechaInicio('');
-                      setFechaFin('');
-                      if (fileInputRef.current) {
-                        fileInputRef.current.value = '';
-                      }
-                    }}
-                    className="date-clear-btn"
-                    style={{ marginLeft: '8px' }}
-                  >
-                    🗑️ Limpiar datos
-                  </button>
-                )}
+            <div className="controls-grid-minimal">
+            {/* Sección de carga */}
+            <div className="control-section upload-section">
+              <CSVUploader
+                onUploadSuccess={(result) => {
+                  console.log('Upload success:', result);
+                  refetchData();
+                  alert(`✅ ${result.message}\n${result.inserted} publicaciones procesadas`);
+                }}
+                onUploadError={(error) => {
+                  console.error('Upload error:', error);
+                  alert(`❌ Error: ${error}`);
+                }}
+              />
+            </div>
+
+            {/* Sección de filtros */}
+            <div className="control-section filters-section">
+              <div className="section-title">Filtros</div>
+              <div className="filters-row">
+                <div className="filter-group">
+                  <label className="filter-label">Fechas</label>
+                  <div className="date-inputs">
+                    <input 
+                      type="date"
+                      value={fechaInicio}
+                      onChange={e => setFechaInicio(e.target.value)}
+                      min={fechaMin}
+                      max={fechaMax}
+                      className="date-input compact"
+                      disabled={!fechaMin}
+                      placeholder="Inicio"
+                    />
+                    <input 
+                      type="date"
+                      value={fechaFin}
+                      onChange={e => setFechaFin(e.target.value)}
+                      min={fechaMin}
+                      max={fechaMax}
+                      className="date-input compact"
+                      disabled={!fechaMin}
+                      placeholder="Fin"
+                    />
+                    {(fechaInicio || fechaFin) && (
+                      <button 
+                        onClick={() => {
+                          setFechaInicio('');
+                          setFechaFin('');
+                        }}
+                        className="clear-dates-btn"
+                        title="Limpiar fechas"
+                      >
+                        ✕
+                      </button>
+                    )}
+                  </div>
+                </div>
               </div>
             </div>
 
-            <div className="form-group">
-              <label className="form-label">Fecha inicio</label>
+            {/* Sección de vista */}
+            <div className="control-section view-section">
+              <div className="section-title">Vista</div>
+              <div className="view-controls">
+                <div className="control-row">
+                  <select 
+                    value={modo} 
+                    onChange={e => setModo(e.target.value as any)}
+                    className="select-compact"
+                  >
+                    <option value="global">📊 Global</option>
+                    <option value="perfil">👤 Por perfil</option>
+                    <option value="mosaico">🎯 Mosaico</option>
+                  </select>
+
+                  <select 
+                    value={red} 
+                    onChange={e => setRed(e.target.value)}
+                    className="select-compact"
+                  >
+                    {Object.keys(aggregated.porRedGlobal).map(r => (
+                      <option key={r} value={r}>{r}</option>
+                    ))}
+                  </select>
+                </div>
+              </div>
+            </div>
+            </div>
+          </div>
+        </section>
+
+        {/* Área de gráficas */}
+        <section className="charts-section">
+          <div className="glass-card">
+            <div className="charts-header">
+              <div className="charts-icon">📈</div>
+              <h2 className="charts-title">Visualizaciones</h2>
+            </div>
+
+            {/* Eliminar los controles duplicados antiguos - ocultos */}
+            <div style={{display: 'none'}}>
+              <div className="form-group">
+                <label className="form-label">Fecha inicio (oculto)</label>
               <input 
                 type="date"
                 value={fechaInicio}

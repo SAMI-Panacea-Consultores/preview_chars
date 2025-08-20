@@ -1,0 +1,34 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+generator client {
+  provider = "prisma-client-js"
+  output   = "../src/generated/prisma"
+}
+
+datasource db {
+  provider = "sqlite"
+  url      = env("DATABASE_URL")
+}
+
+model Publicacion {
+  id          String   @id // ID único de la publicación del CSV
+  fecha       DateTime
+  red         String   // Instagram, Facebook, etc.
+  perfil      String   // Nombre del perfil
+  categoria   String   // Categoría de la publicación
+  impresiones Int      @default(0)
+  alcance     Int      @default(0)
+  meGusta     Int      @default(0) @map("me_gusta")
+  
+  // Metadatos
+  createdAt   DateTime @default(now()) @map("created_at")
+  updatedAt   DateTime @updatedAt @map("updated_at")
+  
+  // Índices para optimizar consultas
+  @@index([red])
+  @@index([perfil])
+  @@index([categoria])
+  @@index([fecha])
+  @@map("publicaciones")
+}
