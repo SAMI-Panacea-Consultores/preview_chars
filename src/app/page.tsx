@@ -207,6 +207,24 @@ export default function Page() {
   const [fechaInicio, setFechaInicio] = useState('');
   const [fechaFin, setFechaFin] = useState('');
 
+  // Función para guardar datos de forma segura en localStorage
+  function safeSetItem(key: string, value: any): boolean {
+    try {
+      localStorage.setItem(key, JSON.stringify(value));
+      return true;
+    } catch (error) {
+      if (error instanceof DOMException && error.name === 'QuotaExceededError') {
+        console.error('LocalStorage quota exceeded. Data will not be persisted.');
+        // Mostrar alerta al usuario
+        alert('⚠️ Archivo muy grande\n\nLos datos se procesarán pero no se guardarán entre sesiones.\n\nSugerencia: Usa un archivo CSV más pequeño para mantener la persistencia.');
+        return false;
+      } else {
+        console.error('Error saving to localStorage:', error);
+        return false;
+      }
+    }
+  }
+
   // Cargar datos del localStorage al iniciar
   useEffect(() => {
     const savedData = localStorage.getItem('csvData');
@@ -298,8 +316,8 @@ export default function Page() {
         const cols = res.meta.fields || [];
         setHeaders(cols);
         
-        // Guardar en localStorage para persistencia
-        localStorage.setItem('csvData', JSON.stringify(data));
+        // Guardar en localStorage para persistencia (de forma segura)
+        safeSetItem('csvData', data);
         
         // heurística leve para detectar columnas
         const redCandidate = cols.find(c => c.toLowerCase() === 'red') || redKey;
@@ -467,8 +485,8 @@ export default function Page() {
               className="mosaic-title"
               onClick={() => {
                 if (isMosaic && perfilName) {
-                  // Guardar datos en localStorage para la página de detalle
-                  localStorage.setItem('csvData', JSON.stringify(rows));
+                  // Guardar datos en localStorage para la página de detalle (de forma segura)
+                  safeSetItem('csvData', rows);
                   // Navegar a la página de detalle
                   router.push(`/perfil/${encodeURIComponent(red)}/${encodeURIComponent(perfilName)}`);
                 }
