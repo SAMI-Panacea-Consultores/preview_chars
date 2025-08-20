@@ -6,9 +6,10 @@ import { useCSVUpload } from '@/hooks/useCSVUpload'
 interface CSVUploaderProps {
   onUploadSuccess?: (result: any) => void
   onUploadError?: (error: string) => void
+  compact?: boolean
 }
 
-export default function CSVUploader({ onUploadSuccess, onUploadError }: CSVUploaderProps) {
+export default function CSVUploader({ onUploadSuccess, onUploadError, compact = false }: CSVUploaderProps) {
   const { uploadCSV, loading, error } = useCSVUpload()
   const [duplicateInfo, setDuplicateInfo] = useState<any>(null)
   const [selectedFile, setSelectedFile] = useState<File | null>(null)
@@ -19,6 +20,11 @@ export default function CSVUploader({ onUploadSuccess, onUploadError }: CSVUploa
     if (file) {
       setSelectedFile(file)
       setDuplicateInfo(null)
+      
+      // En modo compacto, subir automáticamente
+      if (compact) {
+        handleUpload(false)
+      }
     }
   }
 
@@ -54,47 +60,72 @@ export default function CSVUploader({ onUploadSuccess, onUploadError }: CSVUploa
 
   return (
     <div className="csv-uploader">
-      <div className="form-group">
-        <label className="form-label">Subir archivo CSV</label>
-        <div className="file-input">
+      {compact ? (
+        // Modo compacto: solo un botón
+        <>
           <input
             ref={fileInputRef}
             type="file"
             accept=".csv,text/csv"
             onChange={handleFileSelect}
             disabled={loading}
-            id="csv-file-upload"
+            id="csv-file-upload-compact"
+            style={{ display: 'none' }}
           />
-          <label 
-            htmlFor="csv-file-upload" 
-            className={`file-input-label ${selectedFile ? 'loaded' : ''} ${loading ? 'loading' : ''}`}
-          >
-            {loading ? (
-              <>⏳ Subiendo...</>
-            ) : selectedFile ? (
-              <>✅ {selectedFile.name}</>
-            ) : (
-              <>📁 Seleccionar archivo CSV</>
-            )}
-          </label>
-        </div>
-
-        {selectedFile && !loading && !duplicateInfo && (
           <button
-            onClick={() => handleUpload(false)}
-            className="upload-btn"
+            onClick={() => fileInputRef.current?.click()}
+            className={`upload-btn ${loading ? 'loading' : ''}`}
             disabled={loading}
           >
-            🚀 Subir archivo
+            {loading ? '⏳ Subiendo...' : '📁 Cargar CSV'}
           </button>
-        )}
-
-        {error && (
-          <div className="upload-error">
-            ❌ Error: {error}
+        </>
+      ) : (
+        // Modo normal: interfaz completa
+        <>
+          <div className="form-group">
+            <label className="form-label">Subir Data</label>
+            <div className="file-input">
+              <input
+                ref={fileInputRef}
+                type="file"
+                accept=".csv,text/csv"
+                onChange={handleFileSelect}
+                disabled={loading}
+                id="csv-file-upload"
+              />
+              <label 
+                htmlFor="csv-file-upload" 
+                className={`file-input-label ${selectedFile ? 'loaded' : ''} ${loading ? 'loading' : ''}`}
+              >
+                {loading ? (
+                  <>⏳ Subiendo...</>
+                ) : selectedFile ? (
+                  <>✅ {selectedFile.name}</>
+                ) : (
+                  <>📁 Seleccionar archivo CSV</>
+                )}
+              </label>
+            </div>
           </div>
-        )}
-      </div>
+
+          {selectedFile && !loading && !duplicateInfo && (
+            <button
+              onClick={() => handleUpload(false)}
+              className="upload-btn"
+              disabled={loading}
+            >
+              🚀 Subir archivo
+            </button>
+          )}
+        </>
+      )}
+
+      {error && (
+        <div className="upload-error">
+          ❌ Error: {error}
+        </div>
+      )}
 
       {/* Diálogo de duplicados */}
       {duplicateInfo && (

@@ -4,6 +4,7 @@ import { useState, useEffect, useMemo } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import Papa from 'papaparse';
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, PieChart, Pie, Cell, Legend } from 'recharts';
+import html2canvas from 'html2canvas';
 
 type Row = Record<string, string>;
 
@@ -39,6 +40,7 @@ export default function PerfilDetailPage() {
   const [rows, setRows] = useState<Row[]>([]);
   const [allRows, setAllRows] = useState<Row[]>([]); // Para calcular globales
   const [loading, setLoading] = useState(true);
+  const [isExporting, setIsExporting] = useState(false);
 
   // Cargar datos del CSV desde localStorage o fetch
   useEffect(() => {
@@ -130,6 +132,35 @@ export default function PerfilDetailPage() {
     if (/estrategia/i.test(c)) return 'Sin categoría';
     
     return c;
+  };
+
+  // Función para exportar sección como imagen
+  const exportSectionAsImage = async (sectionId: string, filename: string) => {
+    setIsExporting(true);
+    try {
+      const element = document.getElementById(sectionId);
+      if (!element) {
+        throw new Error('Sección no encontrada');
+      }
+
+      // Configuración básica para captura
+      const canvas = await html2canvas(element);
+
+      // Crear enlace de descarga
+      const link = document.createElement('a');
+      link.download = filename;
+      link.href = canvas.toDataURL('image/png');
+      link.click();
+      
+      // Mostrar mensaje de éxito
+      alert('✅ Imagen exportada exitosamente');
+      
+    } catch (error) {
+      console.error('Error al exportar imagen:', error);
+      alert('❌ Error al exportar la imagen. Intenta nuevamente.');
+    } finally {
+      setIsExporting(false);
+    }
   };
 
   // Filtrar datos para este perfil específico
@@ -389,11 +420,33 @@ export default function PerfilDetailPage() {
 
       <main className="dashboard-main">
         {/* Cards de impacto global por categoría - PRINCIPAL */}
-        <section className="controls-section">
-          <div className="glass-card">
+        <section className="controls-section" id="efficiency-section">
+          <div className="glass-card" style={{ position: 'relative' }}>
             <div className="controls-header">
               <div className="controls-icon">🎯</div>
-              <h2 className="controls-title">Eficiencia por Categoría en {red}</h2>
+              <h2 className="controls-title">
+                Eficiencia por Categoría de{' '}
+                <span style={{ 
+                  color: '#007AFF',
+                  background: 'linear-gradient(135deg, #007AFF 0%, #5AC8FA 100%)',
+                  WebkitBackgroundClip: 'text',
+                  WebkitTextFillColor: 'transparent',
+                  fontWeight: '800'
+                }}>
+                  {perfil}
+                </span>
+                {' '}en {red}
+              </h2>
+              
+              {/* Botón de exportación */}
+              <button
+                className={`export-button ${isExporting ? 'exporting' : ''}`}
+                onClick={() => exportSectionAsImage('efficiency-section', `eficiencia-${perfil.toLowerCase().replace(/\s+/g, '-')}-${red.toLowerCase()}-${new Date().toISOString().split('T')[0]}.png`)}
+                disabled={isExporting}
+                title="Exportar como imagen"
+              >
+                {isExporting ? '⏳ Exportando...' : '📸 Exportar'}
+              </button>
             </div>
             <div style={{
               background: 'rgba(0, 122, 255, 0.1)',

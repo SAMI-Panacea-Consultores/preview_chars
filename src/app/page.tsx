@@ -228,6 +228,18 @@ export default function Page() {
       setRows(dbData);
       setHeaders(Object.keys(dbData[0]));
       setCsvLoaded(true);
+      
+      // Calcular rango de fechas disponibles
+      const fechas = dbData
+        .map(row => parseCSVDate(row['Fecha'] || '')) // Nota: API devuelve 'Fecha' con F mayúscula
+        .filter(Boolean) as Date[];
+        
+      if (fechas.length > 0) {
+        const minFecha = new Date(Math.min(...fechas.map(f => f.getTime())));
+        const maxFecha = new Date(Math.max(...fechas.map(f => f.getTime())));
+        setFechaMin(dateToInputValue(minFecha));
+        setFechaMax(dateToInputValue(maxFecha));
+      }
     }
   }, [dbData]);
 
@@ -273,7 +285,37 @@ export default function Page() {
   function parseCSVDate(dateStr: string): Date | null {
     if (!dateStr) return null;
     try {
-      // Ejemplo: "8/5/2025 11:48 pm" -> Date
+      // Si viene en formato ISO (desde la BD), usar directamente
+      if (dateStr.includes('T') && dateStr.includes('Z')) {
+        return new Date(dateStr);
+      }
+      
+      // Si viene en formato M/D/YYYY H:MM am/pm (desde CSV)
+      // Ejemplo: "8/2/2025 5:34 pm" (mes/día/año hora am/pm)
+      const parts = dateStr.trim().split(' ');
+      if (parts.length >= 1) {
+        const datePart = parts[0]; // "8/2/2025"
+        const timePart = parts.slice(1).join(' '); // "5:34 pm"
+        
+        const [month, day, year] = datePart.split('/').map(Number);
+        
+        if (month && day && year && month >= 1 && month <= 12 && day >= 1 && day <= 31 && year > 1900) {
+          let date: Date;
+          
+          if (timePart) {
+            // Con hora: crear fecha completa
+            // Formato: "8/2/2025 5:34 pm"
+            date = new Date(`${month}/${day}/${year} ${timePart}`);
+          } else {
+            // Solo fecha: crear a medianoche
+            date = new Date(year, month - 1, day);
+          }
+          
+          return isNaN(date.getTime()) ? null : date;
+        }
+      }
+      
+      // Fallback: intentar parseo directo
       const date = new Date(dateStr);
       return isNaN(date.getTime()) ? null : date;
     } catch {
@@ -285,6 +327,8 @@ export default function Page() {
   function dateToInputValue(date: Date): string {
     return date.toISOString().split('T')[0];
   }
+
+
 
   // Filtrar filas por rango de fechas
   const filteredRows = useMemo(() => {
@@ -704,12 +748,31 @@ export default function Page() {
               <p className="dashboard-subtitle">Análisis de publicaciones por categoría</p>
             </div>
           </div>
-          <button 
-            className={`compare-btn ${isComparing ? 'active' : ''}`}
-            onClick={() => setIsComparing(!isComparing)}
-          >
-            {isComparing ? '✕' : '⚖️'} {isComparing ? 'Cancelar' : 'Comparar'}
-          </button>
+          <div className="dashboard-actions">
+            {/* CSVUploader compacto */}
+            <div className="csv-uploader-compact">
+              <CSVUploader
+                compact={true}
+                onUploadSuccess={(result) => {
+                  console.log('Upload success:', result);
+                  refetchData();
+                  alert(`✅ ${result.message}\n${result.inserted} publicaciones procesadas`);
+                }}
+                onUploadError={(error) => {
+                  console.error('Upload error:', error);
+                  alert(`❌ Error: ${error}`);
+                }}
+              />
+            </div>
+            
+            {/* Botón comparar */}
+            <button 
+              className={`compare-btn ${isComparing ? 'active' : ''}`}
+              onClick={() => setIsComparing(!isComparing)}
+            >
+              {isComparing ? '✕' : '⚖️'} {isComparing ? 'Cancelar' : 'Comparar'}
+            </button>
+          </div>
         </nav>
       </header>
 
@@ -748,20 +811,7 @@ export default function Page() {
               </div>
             </div>
             <div className="controls-grid-minimal">
-            {/* Sección de carga */}
-            <div className="control-section upload-section">
-              <CSVUploader
-                onUploadSuccess={(result) => {
-                  console.log('Upload success:', result);
-                  refetchData();
-                  alert(`✅ ${result.message}\n${result.inserted} publicaciones procesadas`);
-                }}
-                onUploadError={(error) => {
-                  console.error('Upload error:', error);
-                  alert(`❌ Error: ${error}`);
-                }}
-              />
-            </div>
+
 
             {/* Sección de filtros */}
             <div className="control-section filters-section">

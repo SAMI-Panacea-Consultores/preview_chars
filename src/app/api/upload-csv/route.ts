@@ -91,12 +91,50 @@ export async function POST(request: NextRequest) {
         continue
       }
 
-      // Parsear fecha
+      // Parsear fecha en formato M/D/YYYY H:MM am/pm
       const fechaStr = row[fechaKey]
       let fecha: Date
       try {
-        fecha = new Date(fechaStr)
-        if (isNaN(fecha.getTime())) {
+        if (fechaStr) {
+          // Si viene en formato M/D/YYYY H:MM am/pm (desde CSV)
+          // Ejemplo: "8/2/2025 5:34 pm" (mes/día/año hora am/pm)
+          const parts = fechaStr.toString().trim().split(' ')
+          if (parts.length >= 1) {
+            const datePart = parts[0] // "8/2/2025"
+            const timePart = parts.slice(1).join(' ') // "5:34 pm"
+            
+            const dateComponents = datePart.split('/')
+            if (dateComponents.length === 3) {
+              const [month, day, year] = dateComponents.map(Number)
+              
+              if (month && day && year && month >= 1 && month <= 12 && day >= 1 && day <= 31 && year > 1900) {
+                if (timePart) {
+                  // Con hora: crear fecha completa
+                  fecha = new Date(`${month}/${day}/${year} ${timePart}`)
+                } else {
+                  // Solo fecha: crear a medianoche
+                  fecha = new Date(year, month - 1, day)
+                }
+                
+                if (!isNaN(fecha.getTime())) {
+                  // Fecha válida, continuar
+                } else {
+                  fecha = new Date()
+                }
+              } else {
+                fecha = new Date()
+              }
+            } else {
+              // Fallback: intentar parseo directo
+              fecha = new Date(fechaStr)
+              if (isNaN(fecha.getTime())) {
+                fecha = new Date()
+              }
+            }
+          } else {
+            fecha = new Date()
+          }
+        } else {
           fecha = new Date()
         }
       } catch {
