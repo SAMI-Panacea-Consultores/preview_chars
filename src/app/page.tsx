@@ -5,6 +5,7 @@ import { useRouter } from 'next/navigation';
 import Papa from 'papaparse';
 import { PieChart, Pie, Cell, ResponsiveContainer, Legend, Tooltip } from 'recharts';
 import CSVUploader from '@/components/CSVUploader';
+import CSVStatusBanner, { CSVStatusData } from '@/components/CSVStatusBanner';
 import { usePublicaciones } from '@/hooks/usePublicaciones';
 
 type Row = Record<string, string>;
@@ -208,6 +209,9 @@ export default function Page() {
   // Estados para el filtro de fechas
   const [fechaInicio, setFechaInicio] = useState('');
   const [fechaFin, setFechaFin] = useState('');
+  
+  // Estado para el banner de estado CSV
+  const [csvStatus, setCsvStatus] = useState<CSVStatusData | null>(null);
 
   // Hook para obtener datos de la base de datos
   const { 
@@ -756,11 +760,14 @@ export default function Page() {
                 onUploadSuccess={(result) => {
                   console.log('Upload success:', result);
                   refetchData();
-                  alert(`✅ ${result.message}\n${result.inserted} publicaciones procesadas`);
+                  // El banner ya muestra el éxito, no necesitamos alert
                 }}
                 onUploadError={(error) => {
                   console.error('Upload error:', error);
-                  alert(`❌ Error: ${error}`);
+                  // El banner ya muestra el error, no necesitamos alert
+                }}
+                onStatusChange={(status) => {
+                  setCsvStatus(status);
                 }}
               />
             </div>
@@ -1156,6 +1163,12 @@ export default function Page() {
           )}
         </div>
       </footer>
+
+      {/* Banner flotante de estado CSV */}
+      <CSVStatusBanner 
+        data={csvStatus} 
+        onClose={() => setCsvStatus(null)} 
+      />
     </div>
   );
 }

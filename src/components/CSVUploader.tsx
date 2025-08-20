@@ -1,21 +1,24 @@
 'use client'
 
 import { useState, useRef } from 'react'
-import { useCSVUpload } from '@/hooks/useCSVUpload'
+import { useCSVUpload, CSVUploadStatus } from '@/hooks/useCSVUpload'
 
 interface CSVUploaderProps {
   onUploadSuccess?: (result: any) => void
   onUploadError?: (error: string) => void
+  onStatusChange?: (status: CSVUploadStatus | null) => void
   compact?: boolean
 }
 
-export default function CSVUploader({ onUploadSuccess, onUploadError, compact = false }: CSVUploaderProps) {
+export default function CSVUploader({ onUploadSuccess, onUploadError, onStatusChange, compact = false }: CSVUploaderProps) {
+  console.log('🔧 CSVUploader rendered with compact:', compact)
   const { uploadCSV, loading, error } = useCSVUpload()
   const [duplicateInfo, setDuplicateInfo] = useState<any>(null)
   const [selectedFile, setSelectedFile] = useState<File | null>(null)
   const fileInputRef = useRef<HTMLInputElement>(null)
 
   const handleFileSelect = (event: React.ChangeEvent<HTMLInputElement>) => {
+    console.log('📁 File selected:', event.target.files?.[0]?.name)
     const file = event.target.files?.[0]
     if (file) {
       setSelectedFile(file)
@@ -23,17 +26,25 @@ export default function CSVUploader({ onUploadSuccess, onUploadError, compact = 
       
       // En modo compacto, subir automáticamente
       if (compact) {
+        console.log('🚀 Auto-uploading in compact mode...')
         handleUpload(false)
       }
     }
   }
 
   const handleUpload = async (overwrite = false) => {
-    if (!selectedFile) return
+    console.log('🔄 handleUpload called with:', { selectedFile: selectedFile?.name, overwrite })
+    if (!selectedFile) {
+      console.log('❌ No file selected')
+      return
+    }
 
-    const result = await uploadCSV(selectedFile, overwrite)
+    console.log('📤 Calling uploadCSV...')
+    const result = await uploadCSV(selectedFile, overwrite, onStatusChange)
+    console.log('📥 Upload result:', result)
 
     if (result.success) {
+      console.log('✅ Upload successful')
       setDuplicateInfo(null)
       setSelectedFile(null)
       if (fileInputRef.current) {
@@ -41,9 +52,13 @@ export default function CSVUploader({ onUploadSuccess, onUploadError, compact = 
       }
       onUploadSuccess?.(result)
     } else if (result.duplicates) {
+      console.log('⚠️ Duplicates found:', result.duplicates)
       // Mostrar diálogo de duplicados
       setDuplicateInfo(result)
+      // Limpiar el banner de estado cuando hay duplicados
+      onStatusChange?.(null)
     } else {
+      console.log('❌ Upload failed:', result.error)
       onUploadError?.(result.error || 'Error desconocido')
     }
   }
@@ -73,7 +88,10 @@ export default function CSVUploader({ onUploadSuccess, onUploadError, compact = 
             style={{ display: 'none' }}
           />
           <button
-            onClick={() => fileInputRef.current?.click()}
+            onClick={() => {
+              console.log('🖱️ Compact button clicked')
+              fileInputRef.current?.click()
+            }}
             className={`upload-btn ${loading ? 'loading' : ''}`}
             disabled={loading}
           >
