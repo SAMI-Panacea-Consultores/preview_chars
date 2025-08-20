@@ -10,13 +10,22 @@
   "dependencies": {
     "@prisma/client": "^6.14.0",
     "@types/html2canvas": "^0.5.35",
+    "@types/swagger-jsdoc": "^6.0.4",
+    "@types/swagger-ui-express": "^4.1.8",
+    "cors": "^2.8.5",
+    "express-rate-limit": "^8.0.1",
+    "helmet": "^8.1.0",
     "html2canvas": "^1.4.1",
     "next": "^14.2.10",
+    "next-swagger-doc": "^0.4.1",
     "papaparse": "^5.4.1",
     "prisma": "^6.14.0",
     "react": "^18.3.1",
     "react-dom": "^18.3.1",
-    "recharts": "^3.1.2"
+    "recharts": "^3.1.2",
+    "swagger-jsdoc": "^6.2.8",
+    "swagger-ui-express": "^5.0.1",
+    "zod": "^4.0.17"
   },
   "devDependencies": {
     "@types/node": "24.3.0",
