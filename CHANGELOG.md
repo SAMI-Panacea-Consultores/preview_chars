@@ -5,9 +5,111 @@ Todos los cambios notables de este proyecto serán documentados en este archivo.
 El formato está basado en [Keep a Changelog](https://keepachangelog.com/es-ES/1.0.0/),
 y este proyecto adhiere al [Versionado Semántico](https://semver.org/lang/es/).
 
-## [1.0.0] - 2025-01-XX
+## [2.0.0] - 2025-01-XX
 
-### 🎉 Versión Inicial
+### 🚀 API First Architecture - Major Release
+
+#### ✨ Nuevas Funcionalidades Principales
+- **🔌 API First Architecture**: Migración completa a arquitectura API-first
+- **📚 Documentación OpenAPI/Swagger**: Documentación interactiva completa
+- **✅ Validación con Zod**: Validación robusta de tipos TypeScript-first
+- **💾 Base de Datos Prisma**: Persistencia con SQLite y ORM Prisma
+- **🔄 Manejo de Duplicados**: Detección y gestión inteligente de duplicados CSV
+- **📊 Paginación Avanzada**: Endpoints con paginación y filtros avanzados
+- **🎯 APIs RESTful**: Endpoints estructurados y documentados
+
+#### 🔧 APIs Implementadas
+- **`POST /api/upload-csv`**: Carga de archivos CSV con validación
+- **`GET /api/publicaciones`**: Consulta de publicaciones con filtros
+- **`GET /api/docs`**: Especificación OpenAPI completa
+- **Documentación Interactiva**: `/api-docs` (SwaggerUI) y `/api-docs-simple`
+
+#### 💾 Persistencia y Base de Datos
+- **SQLite + Prisma**: Base de datos relacional con ORM type-safe
+- **Migración desde localStorage**: Datos ahora persisten en base de datos
+- **Índices Optimizados**: Consultas eficientes por red, perfil, categoría, fecha
+- **Gestión de Duplicados**: Detección por ID único con opciones de sobrescritura
+
+#### 🎨 Mejoras de UI/UX
+- **🏗️ Componentes Modulares**: `CSVUploader`, `CSVStatusBanner` separados
+- **📍 Estado en Tiempo Real**: Banner flotante con progreso de carga CSV
+- **🎛️ Controles Reorganizados**: Botón "Cargar CSV" movido al header
+- **📤 Exportación de Imágenes**: Exportar gráficas como PNG en páginas de detalle
+- **🎨 UI Minimalista**: Rediseño de la sección "Configuración"
+
+#### ⚡ Performance y Optimización
+- **🧠 Custom Hooks**: `useCSVUpload`, `usePublicaciones` para lógica reutilizable
+- **📊 Agregaciones Optimizadas**: Cálculos del lado del servidor
+- **🎯 Consultas Eficientes**: Filtros y ordenamiento a nivel de base de datos
+- **💨 Carga Asíncrona**: Mejor experiencia de usuario durante operaciones
+
+#### 🔒 Validación y Seguridad
+- **✅ Esquemas Zod**: Validación completa de entrada y salida
+- **🛡️ Manejo de Errores**: Respuestas estructuradas y consistentes
+- **🔍 Validación de Archivos**: Verificación de formato y estructura CSV
+- **📋 Logs Estructurados**: Trazabilidad completa de operaciones
+
+#### 🛠️ Dependencias Nuevas
+```json
+{
+  "prisma": "^5.22.0",
+  "@prisma/client": "^5.22.0", 
+  "zod": "^3.23.8",
+  "swagger-jsdoc": "^6.2.8",
+  "html2canvas": "^1.4.1"
+}
+```
+
+#### 📁 Nuevos Archivos Creados
+- `src/app/api/docs/route.ts` - Endpoint de especificación OpenAPI
+- `src/app/api/publicaciones/route.ts` - API principal de datos
+- `src/app/api/upload-csv/route.ts` - API de carga CSV
+- `src/app/api-docs/page.tsx` - SwaggerUI interactivo
+- `src/app/api-docs-simple/page.tsx` - Documentación HTML
+- `src/components/CSVUploader.tsx` - Componente de carga
+- `src/components/CSVStatusBanner.tsx` - Banner de estado
+- `src/hooks/useCSVUpload.ts` - Hook para carga CSV
+- `src/hooks/usePublicaciones.ts` - Hook para datos
+- `src/lib/api-utils.ts` - Utilidades de API
+- `src/lib/prisma.ts` - Cliente Prisma
+- `src/lib/schemas.ts` - Esquemas Zod
+- `src/lib/swagger.ts` - Configuración OpenAPI
+- `prisma/schema.prisma` - Esquema de base de datos
+- `.env` - Variables de entorno
+
+#### 🔄 Migraciones y Cambios Breaking
+- **⚠️ BREAKING**: localStorage ya no es la fuente principal de datos
+- **⚠️ BREAKING**: Estructura de datos cambió para incluir IDs únicos
+- **⚠️ BREAKING**: URLs de API cambiaron de cliente a servidor
+- **✅ COMPATIBLE**: Interfaz de usuario mantiene funcionalidad existente
+- **✅ COMPATIBLE**: Formato CSV sigue siendo el mismo
+
+#### 🐛 Correcciones de v2.0.0
+- **Styled-jsx Errors**: Eliminados errores de compilación en páginas de documentación
+- **SwaggerUI Loading**: Mejorado manejo de errores de carga CDN
+- **Date Parsing**: Corregido parsing de fechas M/D/YYYY H:MM am/pm
+- **Duplicate Handling**: Implementado manejo robusto de duplicados
+- **Memory Issues**: Solucionado QuotaExceededError con base de datos
+- **Type Safety**: Eliminados errores de TypeScript con validación Zod
+
+#### 📊 Estadísticas v2.0.0
+- **Archivos nuevos**: 15
+- **APIs implementadas**: 3
+- **Esquemas Zod**: 8
+- **Custom Hooks**: 2
+- **Componentes nuevos**: 2
+- **Líneas de código agregadas**: ~4,000
+- **Dependencias nuevas**: 5
+
+#### 🎯 URLs de Documentación
+- **SwaggerUI**: `/api-docs`
+- **Documentación HTML**: `/api-docs-simple` 
+- **OpenAPI JSON**: `/api/docs`
+- **GitHub**: `https://github.com/SAMI-Panacea-Consultores/preview_chars`
+
+## [1.0.0] - 2025-01-15
+
+### 🎉 Versión Inicial (Legacy)
 
 #### ✨ Agregado
 - **Dashboard Principal** con cuatro modos de visualización:
@@ -113,25 +215,34 @@ src/app/
 
 ## [Futuras Versiones]
 
-### 🔮 Roadmap v1.1.0
-- [ ] Exportar reportes en PDF
-- [ ] Filtros avanzados por engagement
-- [ ] Comparación de múltiples períodos
-- [ ] Dashboard de tendencias históricas
-- [ ] Sistema de alertas y notificaciones
+### 🔮 Roadmap v2.1.0 - Mejoras y Optimizaciones
+- [ ] **PostgreSQL Migration**: Migrar de SQLite a PostgreSQL para producción
+- [ ] **Redis Caching**: Implementar cache con Redis para mejor performance
+- [ ] **Rate Limiting**: Protección de APIs con límites de requests
+- [ ] **Metrics & Monitoring**: Dashboard de métricas de APIs
+- [ ] **Bulk Operations**: Carga masiva de múltiples archivos CSV
 
-### 🔮 Roadmap v1.2.0
-- [ ] Integración con APIs de redes sociales
-- [ ] Base de datos para persistencia
-- [ ] Sistema de usuarios y autenticación
-- [ ] Reportes automatizados por email
+### 🔮 Roadmap v2.2.0 - Funcionalidades Avanzadas  
+- [ ] **Autenticación JWT**: Sistema de usuarios y roles
+- [ ] **Webhooks**: Notificaciones automáticas de cambios
+- [ ] **Reportes PDF**: Exportación automática de reportes
+- [ ] **Filtros Avanzados**: Búsqueda por texto y rangos numéricos
+- [ ] **Dashboard Admin**: Panel de administración de datos
 
-### 🔮 Roadmap v2.0.0
-- [ ] Refactoring a micro-frontends
-- [ ] API REST completa
-- [ ] Dashboard de administración
-- [ ] Análisis predictivo con ML
-- [ ] Integración con herramientas de BI
+### 🔮 Roadmap v3.0.0 - Escalabilidad Empresarial
+- [ ] **Microservicios**: Arquitectura distribuida
+- [ ] **GraphQL**: API GraphQL junto con REST
+- [ ] **Real-time Updates**: WebSockets para actualizaciones en vivo
+- [ ] **Machine Learning**: Análisis predictivo y tendencias
+- [ ] **Multi-tenant**: Soporte para múltiples organizaciones
+- [ ] **API Gateway**: Gateway centralizado con balanceador
+
+### ✅ Completado en v2.0.0
+- [x] **API REST completa** ✅
+- [x] **Base de datos para persistencia** ✅ 
+- [x] **Documentación OpenAPI/Swagger** ✅
+- [x] **Validación robusta** ✅
+- [x] **Exportar gráficas como imágenes** ✅
 
 ---
 

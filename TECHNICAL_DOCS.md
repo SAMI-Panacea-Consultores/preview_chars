@@ -1,37 +1,54 @@
-# 🔧 Documentación Técnica
+# 🔧 Documentación Técnica - API First Architecture
 
 ## 📋 Arquitectura del Sistema
 
-### Estructura de Componentes
+### **Arquitectura API First**
 
 ```
-Dashboard Principal (page.tsx)
-├── Controles de Filtrado
-├── Selector de Modo de Vista
-├── Gráficas Principales (Recharts)
-└── Panel de Comparación
-
-Página de Detalle (perfil/[red]/[perfil]/page.tsx)
-├── Header con Navegación
-├── Sección de Eficiencia por Categoría
-├── Resumen General
-└── Métricas por Categoría (Gráficas de Línea)
+┌─────────────────────────────────────────────────────────────┐
+│                    Frontend (Next.js 14)                    │
+├─────────────────────────────────────────────────────────────┤
+│  Components    │  Hooks        │  Pages                     │
+│  - CSVUploader │  - useCSVUpload│  - Dashboard (/)          │
+│  - StatusBanner│  - usePublica..│  - Profile Details        │
+│  - Charts      │  - Custom hooks│  - API Docs               │
+├─────────────────────────────────────────────────────────────┤
+│                    API Layer (Next.js API Routes)           │
+├─────────────────────────────────────────────────────────────┤
+│  Validation    │  Routes       │  Documentation            │
+│  - Zod Schemas │  - /api/upload│  - OpenAPI/Swagger        │
+│  - Type Safety │  - /api/public│  - Interactive Docs       │
+│  - Error Handle│  - /api/docs  │  - Schema Validation      │
+├─────────────────────────────────────────────────────────────┤
+│                    Data Layer (Prisma + SQLite)             │
+├─────────────────────────────────────────────────────────────┤
+│  ORM           │  Database     │  Migrations               │
+│  - Prisma      │  - SQLite     │  - Schema Evolution       │
+│  - Type Safety │  - ACID       │  - Data Integrity         │
+│  - Queries     │  - Indexing   │  - Backup/Restore         │
+└─────────────────────────────────────────────────────────────┘
 ```
 
-### Flujo de Datos
+### **Flujo de Datos API First**
 
 ```mermaid
 graph TD
-    A[CSV Upload] --> B[PapaParse Processing]
-    B --> C[Data Normalization]
-    C --> D[localStorage Storage]
-    D --> E[React State Management]
-    E --> F[useMemo Data Aggregation]
-    F --> G[Recharts Visualization]
+    A[CSV Upload] --> B[Frontend Validation]
+    B --> C[API POST /api/upload-csv]
+    C --> D[Zod Schema Validation]
+    D --> E[Prisma Database Insert]
+    E --> F[Duplicate Detection]
+    F --> G[Response with Statistics]
     
-    H[Date Filtering] --> E
-    I[Category Sorting] --> E
-    J[Impact Calculation] --> F
+    H[Frontend Data Request] --> I[API GET /api/publicaciones]
+    I --> J[Query Parameter Validation]
+    J --> K[Prisma Database Query]
+    K --> L[Data Aggregation]
+    L --> M[Paginated Response]
+    
+    N[API Documentation] --> O[OpenAPI Specification]
+    O --> P[SwaggerUI Rendering]
+    P --> Q[Interactive API Testing]
 ```
 
 ## 🧮 Funciones de Procesamiento de Datos
