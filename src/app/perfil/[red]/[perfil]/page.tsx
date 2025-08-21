@@ -3,7 +3,7 @@
 import { useState, useEffect, useMemo } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import Papa from 'papaparse';
-import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, PieChart, Pie, Cell, Legend } from 'recharts';
+import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, PieChart, Pie, Cell, Legend, Treemap } from 'recharts';
 import html2canvas from 'html2canvas';
 
 type Row = Record<string, string>;
@@ -792,6 +792,58 @@ export default function PerfilDetailPage() {
                         }}>
                           de todos los me gusta<br/>de {category} en {red}
                         </div>
+                      </div>
+                    </div>
+
+                    {/* Treemap de proporción visual */}
+                    <div style={{
+                      marginTop: '20px',
+                      padding: '16px',
+                      background: 'rgba(255, 255, 255, 0.8)',
+                      borderRadius: '12px',
+                      border: '1px solid rgba(0, 0, 0, 0.08)',
+                      backdropFilter: 'blur(8px)'
+                    }}>
+                      <div style={{ 
+                        fontSize: '14px', 
+                        color: '#1D1D1F', 
+                        fontWeight: '600', 
+                        marginBottom: '12px',
+                        textAlign: 'center'
+                      }}>
+                        📊 Proporción Visual de Impacto
+                      </div>
+                      <div style={{ height: '120px', width: '100%' }}>
+                        <ResponsiveContainer width="100%" height="100%">
+                          <Treemap
+                            data={[
+                              {
+                                name: perfil.length > 12 ? perfil.substring(0, 12) + '...' : perfil,
+                                value: data.impresiones,
+                                fill: CATEGORY_COLOR[category] || '#007AFF'
+                              },
+                              {
+                                name: 'Otros perfiles',
+                                value: Math.max(0, globalCategoryData.impresiones - data.impresiones),
+                                fill: '#E5E5EA'
+                              }
+                            ]}
+                            dataKey="value"
+                            aspectRatio={4/3}
+                            stroke="#fff"
+                            fill="#000000"
+                          />
+                        </ResponsiveContainer>
+                      </div>
+                      <div style={{ 
+                        fontSize: '11px', 
+                        color: '#8E8E93', 
+                        textAlign: 'center',
+                        marginTop: '8px',
+                        lineHeight: 1.3
+                      }}>
+                        El tamaño representa la proporción de impresiones<br/>
+                        de <strong>{category}</strong> en <strong>{red}</strong>
                       </div>
                     </div>
 
