@@ -1595,3 +1595,58 @@ body {
     padding: var(--space-3) var(--space-4);
   }
 }
+
+/* Estilos adicionales para controles minimalistas en páginas de detalle */
+.controls-subtitle {
+  font-size: 0.75rem;
+  color: var(--text-secondary);
+  margin-top: 0.25rem;
+  display: block;
+}
+
+.button-group-minimal {
+  display: flex;
+  gap: 0.5rem;
+}
+
+.btn-secondary-minimal,
+.btn-primary-minimal {
+  padding: 0.5rem 0.75rem;
+  font-size: 0.75rem;
+  border-radius: 6px;
+  border: none;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  font-weight: 500;
+  white-space: nowrap;
+}
+
+.btn-secondary-minimal {
+  background: rgba(107, 114, 128, 0.1);
+  color: var(--text-secondary);
+  border: 1px solid rgba(107, 114, 128, 0.2);
+}
+
+.btn-secondary-minimal:hover:not(:disabled) {
+  background: rgba(107, 114, 128, 0.2);
+  color: var(--text-primary);
+}
+
+.btn-secondary-minimal:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.btn-primary-minimal {
+  background: var(--system-blue);
+  color: white;
+}
+
+.btn-primary-minimal:hover:not(:disabled) {
+  background: #0056b3;
+}
+
+.btn-primary-minimal:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}

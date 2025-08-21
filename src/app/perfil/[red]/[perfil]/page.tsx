@@ -39,8 +39,15 @@ export default function PerfilDetailPage() {
 
   const [rows, setRows] = useState<Row[]>([]);
   const [allRows, setAllRows] = useState<Row[]>([]); // Para calcular globales
+  const [originalRows, setOriginalRows] = useState<Row[]>([]); // Datos sin filtrar
   const [loading, setLoading] = useState(true);
   const [isExporting, setIsExporting] = useState(false);
+  
+  // Estados para filtros de fecha
+  const [fechaInicio, setFechaInicio] = useState('');
+  const [fechaFin, setFechaFin] = useState('');
+  const [fechaMin, setFechaMin] = useState('');
+  const [fechaMax, setFechaMax] = useState('');
 
   // Cargar datos del CSV desde localStorage o fetch
   useEffect(() => {
@@ -52,6 +59,20 @@ export default function PerfilDetailPage() {
           const data = JSON.parse(storedData);
           setRows(data);
           setAllRows(data); // Guardar todos los datos para cálculos globales
+          setOriginalRows(data); // Guardar datos originales para filtros
+          
+          // Calcular rango de fechas disponible
+          const fechas = data
+            .map(row => parseCSVDate(row['Fecha'] || ''))
+            .filter(Boolean) as Date[];
+          
+          if (fechas.length > 0) {
+            const minFecha = new Date(Math.min(...fechas.map(f => f.getTime())));
+            const maxFecha = new Date(Math.max(...fechas.map(f => f.getTime())));
+            setFechaMin(minFecha.toISOString().split('T')[0]);
+            setFechaMax(maxFecha.toISOString().split('T')[0]);
+          }
+          
           setLoading(false);
           return;
         }
@@ -67,6 +88,20 @@ export default function PerfilDetailPage() {
             const data = result.data as Row[];
             setRows(data);
             setAllRows(data); // Guardar todos los datos para cálculos globales
+            setOriginalRows(data); // Guardar datos originales para filtros
+            
+            // Calcular rango de fechas disponible
+            const fechas = data
+              .map(row => parseCSVDate(row['Fecha'] || ''))
+              .filter(Boolean) as Date[];
+            
+            if (fechas.length > 0) {
+              const minFecha = new Date(Math.min(...fechas.map(f => f.getTime())));
+              const maxFecha = new Date(Math.max(...fechas.map(f => f.getTime())));
+              setFechaMin(minFecha.toISOString().split('T')[0]);
+              setFechaMax(maxFecha.toISOString().split('T')[0]);
+            }
+            
             localStorage.setItem('csvData', JSON.stringify(data));
             setLoading(false);
           }
@@ -79,6 +114,29 @@ export default function PerfilDetailPage() {
 
     loadData();
   }, []);
+
+  // Filtrar datos por fecha cuando cambien los filtros
+  useEffect(() => {
+    if (originalRows.length === 0) return;
+
+    let filteredData = [...originalRows];
+
+    if (fechaInicio || fechaFin) {
+      filteredData = originalRows.filter(row => {
+        const fecha = parseCSVDate(row['Fecha'] || '');
+        if (!fecha) return false;
+
+        const fechaStr = fecha.toISOString().split('T')[0];
+        
+        if (fechaInicio && fechaStr < fechaInicio) return false;
+        if (fechaFin && fechaStr > fechaFin) return false;
+        
+        return true;
+      });
+    }
+
+    setRows(filteredData);
+  }, [fechaInicio, fechaFin, originalRows]);
 
   // Función para parsear fechas del CSV (formato: "M/D/YYYY H:MM am/pm")
   const parseCSVDate = (dateStr: string): Date | null => {
@@ -419,6 +477,90 @@ export default function PerfilDetailPage() {
       </header>
 
       <main className="dashboard-main">
+        {/* Controles de filtros de fecha */}
+        <section className="controls-section-minimal">
+          <div className="controls-container">
+            <div className="controls-header-minimal">
+              <div className="header-left">
+                <h2 className="controls-title-minimal">📅 Filtros de Fecha</h2>
+                <span className="controls-subtitle">
+                  {fechaInicio || fechaFin ? 
+                    `Mostrando datos del ${fechaInicio || 'inicio'} al ${fechaFin || 'fin'}` :
+                    'Mostrando todos los datos disponibles'
+                  }
+                </span>
+              </div>
+              <div className="header-right">
+                <div className="status-indicators-compact">
+                  <div className="status-badge info" title={`Publicaciones ${fechaInicio || fechaFin ? 'filtradas' : 'totales'}`}>
+                    📊 {rows.filter(row => row['Red'] === red && row['Perfil'] === perfil).length.toLocaleString()}
+                  </div>
+                  {fechaMin && fechaMax && (
+                    <div className="status-badge success" title={`Rango disponible: ${fechaMin} - ${fechaMax}`}>
+                      📅 {fechaMin} → {fechaMax}
+                    </div>
+                  )}
+                </div>
+              </div>
+            </div>
+            
+            <div className="controls-grid-minimal">
+              <div className="form-group-minimal">
+                <label className="form-label-minimal">Fecha inicio</label>
+                <input 
+                  type="date"
+                  value={fechaInicio}
+                  onChange={e => setFechaInicio(e.target.value)}
+                  min={fechaMin}
+                  max={fechaMax}
+                  className="form-input-minimal"
+                  disabled={!fechaMin}
+                />
+              </div>
+              
+              <div className="form-group-minimal">
+                <label className="form-label-minimal">Fecha fin</label>
+                <input 
+                  type="date"
+                  value={fechaFin}
+                  onChange={e => setFechaFin(e.target.value)}
+                  min={fechaMin}
+                  max={fechaMax}
+                  className="form-input-minimal"
+                  disabled={!fechaMin}
+                />
+              </div>
+              
+              <div className="form-group-minimal">
+                <label className="form-label-minimal">Acciones</label>
+                <div className="button-group-minimal">
+                  <button 
+                    onClick={() => {
+                      setFechaInicio('');
+                      setFechaFin('');
+                    }}
+                    disabled={!fechaInicio && !fechaFin}
+                    className="btn-secondary-minimal"
+                    title="Limpiar filtros de fecha"
+                  >
+                    🗑️ Limpiar
+                  </button>
+                  <button 
+                    onClick={() => {
+                      setFechaInicio(fechaMin);
+                      setFechaFin(fechaMax);
+                    }}
+                    disabled={!fechaMin || !fechaMax}
+                    className="btn-primary-minimal"
+                    title="Seleccionar todo el rango disponible"
+                  >
+                    📅 Todo el período
+                  </button>
+                </div>
+              </div>
+            </div>
+          </div>
+        </section>
         {/* Cards de impacto global por categoría - PRINCIPAL */}
         <section className="controls-section" id="efficiency-section">
           <div className="glass-card" style={{ position: 'relative' }}>
