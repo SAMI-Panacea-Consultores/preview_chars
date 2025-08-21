@@ -477,86 +477,78 @@ export default function PerfilDetailPage() {
       </header>
 
       <main className="dashboard-main">
-        {/* Controles de filtros de fecha */}
-        <section className="controls-section-minimal">
-          <div className="controls-container">
-            <div className="controls-header-minimal">
-              <div className="header-left">
-                <h2 className="controls-title-minimal">📅 Filtros de Fecha</h2>
-                <span className="controls-subtitle">
+        {/* Controles de filtros de fecha - Diseño compacto y elegante */}
+        <section className="date-filter-section">
+          <div className="date-filter-container">
+            <div className="date-filter-header">
+              <div className="filter-title-group">
+                <h3 className="filter-title">📅 Período de análisis</h3>
+                <span className="filter-status">
                   {fechaInicio || fechaFin ? 
-                    `Mostrando datos del ${fechaInicio || 'inicio'} al ${fechaFin || 'fin'}` :
-                    'Mostrando todos los datos disponibles'
+                    `${fechaInicio || '...'} → ${fechaFin || '...'}` :
+                    'Todo el período'
                   }
                 </span>
               </div>
-              <div className="header-right">
-                <div className="status-indicators-compact">
-                  <div className="status-badge info" title={`Publicaciones ${fechaInicio || fechaFin ? 'filtradas' : 'totales'}`}>
-                    📊 {rows.filter(row => row['Red'] === red && row['Perfil'] === perfil).length.toLocaleString()}
-                  </div>
-                  {fechaMin && fechaMax && (
-                    <div className="status-badge success" title={`Rango disponible: ${fechaMin} - ${fechaMax}`}>
-                      📅 {fechaMin} → {fechaMax}
-                    </div>
-                  )}
-                </div>
+              <div className="filter-stats">
+                <span className="stat-item">
+                  📊 {rows.filter(row => row['Red'] === red && row['Perfil'] === perfil).length.toLocaleString()} publicaciones
+                </span>
               </div>
             </div>
             
-            <div className="controls-grid-minimal">
-              <div className="form-group-minimal">
-                <label className="form-label-minimal">Fecha inicio</label>
+            <div className="date-controls-row">
+              <div className="date-input-group">
+                <label className="date-label">Desde</label>
                 <input 
                   type="date"
                   value={fechaInicio}
                   onChange={e => setFechaInicio(e.target.value)}
                   min={fechaMin}
                   max={fechaMax}
-                  className="form-input-minimal"
+                  className="date-input-compact"
                   disabled={!fechaMin}
                 />
               </div>
               
-              <div className="form-group-minimal">
-                <label className="form-label-minimal">Fecha fin</label>
+              <div className="date-separator">→</div>
+              
+              <div className="date-input-group">
+                <label className="date-label">Hasta</label>
                 <input 
                   type="date"
                   value={fechaFin}
                   onChange={e => setFechaFin(e.target.value)}
                   min={fechaMin}
                   max={fechaMax}
-                  className="form-input-minimal"
+                  className="date-input-compact"
                   disabled={!fechaMin}
                 />
               </div>
               
-              <div className="form-group-minimal">
-                <label className="form-label-minimal">Acciones</label>
-                <div className="button-group-minimal">
-                  <button 
-                    onClick={() => {
-                      setFechaInicio('');
-                      setFechaFin('');
-                    }}
-                    disabled={!fechaInicio && !fechaFin}
-                    className="btn-secondary-minimal"
-                    title="Limpiar filtros de fecha"
-                  >
-                    🗑️ Limpiar
-                  </button>
-                  <button 
-                    onClick={() => {
-                      setFechaInicio(fechaMin);
-                      setFechaFin(fechaMax);
-                    }}
-                    disabled={!fechaMin || !fechaMax}
-                    className="btn-primary-minimal"
-                    title="Seleccionar todo el rango disponible"
-                  >
-                    📅 Todo el período
-                  </button>
-                </div>
+              <div className="date-actions">
+                <button 
+                  onClick={() => {
+                    setFechaInicio('');
+                    setFechaFin('');
+                  }}
+                  disabled={!fechaInicio && !fechaFin}
+                  className="date-btn clear-btn"
+                  title="Limpiar filtros"
+                >
+                  ✕
+                </button>
+                <button 
+                  onClick={() => {
+                    setFechaInicio(fechaMin);
+                    setFechaFin(fechaMax);
+                  }}
+                  disabled={!fechaMin || !fechaMax}
+                  className="date-btn all-btn"
+                  title="Todo el período"
+                >
+                  📅
+                </button>
               </div>
             </div>
           </div>
