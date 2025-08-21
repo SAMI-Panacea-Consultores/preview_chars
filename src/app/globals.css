@@ -1826,3 +1826,348 @@ body {
     margin-top: 0.5rem;
   }
 }
+
+/* Estilos para la sección principal de controles mejorada */
+.main-controls-section {
+  margin: 1.5rem 0;
+}
+
+.main-controls-container {
+  background: rgba(255, 255, 255, 0.85);
+  backdrop-filter: blur(24px);
+  border: 1px solid rgba(0, 0, 0, 0.04);
+  border-radius: 20px;
+  padding: 1.5rem 2rem;
+  box-shadow: 0 8px 40px rgba(0, 0, 0, 0.06);
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.main-controls-container:hover {
+  box-shadow: 0 12px 50px rgba(0, 0, 0, 0.1);
+  border-color: rgba(0, 122, 255, 0.1);
+}
+
+.controls-header-main {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  margin-bottom: 1.5rem;
+  padding-bottom: 1rem;
+  border-bottom: 1px solid rgba(0, 0, 0, 0.06);
+}
+
+.header-info h2.controls-title-main {
+  font-size: 1.25rem;
+  font-weight: 700;
+  color: #1a1a1a;
+  margin: 0 0 0.375rem 0;
+  font-family: 'SF Pro Display', -apple-system, BlinkMacSystemFont, sans-serif;
+}
+
+.controls-description {
+  font-size: 0.875rem;
+  color: #666;
+  font-weight: 500;
+  font-family: 'SF Pro Text', -apple-system, BlinkMacSystemFont, sans-serif;
+}
+
+.controls-stats {
+  display: flex;
+  gap: 0.75rem;
+  align-items: center;
+}
+
+.stat-chip {
+  background: rgba(0, 122, 255, 0.08);
+  color: #007AFF;
+  padding: 0.5rem 1rem;
+  border-radius: 25px;
+  font-size: 0.75rem;
+  font-weight: 600;
+  white-space: nowrap;
+  font-family: 'SF Pro Text', -apple-system, BlinkMacSystemFont, sans-serif;
+}
+
+.stat-chip.loading {
+  background: rgba(142, 142, 147, 0.1);
+  color: #8E8E93;
+}
+
+.stat-chip.error {
+  background: rgba(255, 59, 48, 0.1);
+  color: #FF3B30;
+}
+
+.stat-chip.success {
+  background: rgba(52, 199, 89, 0.1);
+  color: #34C759;
+}
+
+.controls-content {
+  display: grid;
+  gap: 1.5rem;
+}
+
+.control-group {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+}
+
+.control-label {
+  font-size: 0.875rem;
+  font-weight: 600;
+  color: #1a1a1a;
+  font-family: 'SF Pro Display', -apple-system, BlinkMacSystemFont, sans-serif;
+}
+
+/* Selectores de fecha mejorados */
+.date-range-selector {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  flex-wrap: wrap;
+}
+
+.date-input-main {
+  padding: 0.75rem 1rem;
+  border: 1.5px solid rgba(0, 0, 0, 0.08);
+  border-radius: 12px;
+  font-size: 0.875rem;
+  background: rgba(255, 255, 255, 0.9);
+  transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+  font-family: 'SF Pro Text', -apple-system, BlinkMacSystemFont, sans-serif;
+  color: #1a1a1a;
+  min-width: 160px;
+}
+
+.date-input-main:focus {
+  outline: none;
+  border-color: #007AFF;
+  box-shadow: 0 0 0 4px rgba(0, 122, 255, 0.1);
+  background: white;
+}
+
+.clear-date-btn {
+  width: 40px;
+  height: 40px;
+  border: none;
+  border-radius: 50%;
+  background: rgba(255, 59, 48, 0.1);
+  color: #FF3B30;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+  font-size: 0.875rem;
+  font-weight: 600;
+}
+
+.clear-date-btn:hover {
+  background: rgba(255, 59, 48, 0.15);
+  transform: scale(1.05);
+}
+
+/* Selectores mejorados */
+.view-selector {
+  display: flex;
+  gap: 0.75rem;
+  flex-wrap: wrap;
+}
+
+.select-main {
+  padding: 0.75rem 1rem;
+  border: 1.5px solid rgba(0, 0, 0, 0.08);
+  border-radius: 12px;
+  font-size: 0.875rem;
+  background: rgba(255, 255, 255, 0.9);
+  transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+  font-family: 'SF Pro Text', -apple-system, BlinkMacSystemFont, sans-serif;
+  color: #1a1a1a;
+  cursor: pointer;
+  min-width: 140px;
+}
+
+.select-main:focus {
+  outline: none;
+  border-color: #007AFF;
+  box-shadow: 0 0 0 4px rgba(0, 122, 255, 0.1);
+  background: white;
+}
+
+.select-main.full-width {
+  width: 100%;
+  min-width: auto;
+}
+
+/* Controles de mosaico */
+.mosaic-controls {
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+}
+
+.toggle-control {
+  display: flex;
+  align-items: center;
+}
+
+.toggle-label {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  cursor: pointer;
+  font-size: 0.875rem;
+  font-weight: 500;
+  color: #1a1a1a;
+  font-family: 'SF Pro Text', -apple-system, BlinkMacSystemFont, sans-serif;
+}
+
+.toggle-input {
+  display: none;
+}
+
+.toggle-slider {
+  width: 52px;
+  height: 32px;
+  background: rgba(0, 0, 0, 0.1);
+  border-radius: 16px;
+  position: relative;
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.toggle-slider::before {
+  content: '';
+  position: absolute;
+  width: 28px;
+  height: 28px;
+  border-radius: 50%;
+  background: white;
+  top: 2px;
+  left: 2px;
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15);
+}
+
+.toggle-input:checked + .toggle-slider {
+  background: #007AFF;
+}
+
+.toggle-input:checked + .toggle-slider::before {
+  transform: translateX(20px);
+}
+
+.sort-controls {
+  display: flex;
+  gap: 0.75rem;
+  flex-wrap: wrap;
+}
+
+/* Botón de comparación */
+.compare-toggle-btn {
+  padding: 0.875rem 1.5rem;
+  border: 2px solid rgba(0, 122, 255, 0.2);
+  border-radius: 12px;
+  background: rgba(0, 122, 255, 0.05);
+  color: #007AFF;
+  font-size: 0.875rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+  font-family: 'SF Pro Text', -apple-system, BlinkMacSystemFont, sans-serif;
+  align-self: flex-start;
+}
+
+.compare-toggle-btn:hover {
+  background: rgba(0, 122, 255, 0.1);
+  border-color: rgba(0, 122, 255, 0.3);
+  transform: translateY(-1px);
+}
+
+.compare-toggle-btn.active {
+  background: #007AFF;
+  color: white;
+  border-color: #007AFF;
+}
+
+.compare-toggle-btn.active:hover {
+  background: #0056b3;
+  border-color: #0056b3;
+}
+
+/* Sección de comparación */
+.comparison-section {
+  margin-top: 1rem;
+  padding: 1.5rem;
+  background: rgba(0, 122, 255, 0.02);
+  border: 1px solid rgba(0, 122, 255, 0.1);
+  border-radius: 16px;
+}
+
+.comparison-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 1.5rem;
+}
+
+.comparison-profile {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+}
+
+.comparison-label {
+  font-size: 0.875rem;
+  font-weight: 600;
+  color: #1a1a1a;
+  font-family: 'SF Pro Display', -apple-system, BlinkMacSystemFont, sans-serif;
+}
+
+/* Responsive para controles principales */
+@media (max-width: 768px) {
+  .main-controls-container {
+    padding: 1.25rem 1.5rem;
+    border-radius: 16px;
+  }
+  
+  .controls-header-main {
+    flex-direction: column;
+    gap: 1rem;
+    align-items: flex-start;
+  }
+  
+  .controls-stats {
+    width: 100%;
+    justify-content: flex-start;
+    flex-wrap: wrap;
+  }
+  
+  .date-range-selector,
+  .view-selector,
+  .sort-controls {
+    flex-direction: column;
+    align-items: stretch;
+  }
+  
+  .date-input-main,
+  .select-main {
+    min-width: auto;
+    width: 100%;
+  }
+  
+  .comparison-grid {
+    grid-template-columns: 1fr;
+    gap: 1rem;
+  }
+  
+  .mosaic-controls {
+    gap: 0.75rem;
+  }
+  
+  .toggle-label {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 0.5rem;
+  }
+}

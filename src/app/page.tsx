@@ -785,104 +785,92 @@ export default function Page() {
 
       <main className="dashboard-main">
 
-        {/* Panel de controles minimalista */}
-        <section className="controls-section-minimal">
-          <div className="controls-container">
-            <div className="controls-header-minimal">
-              <div className="header-left">
-                <h2 className="controls-title-minimal">⚙️ Configuración</h2>
+        {/* Panel de controles mejorado */}
+        <section className="main-controls-section">
+          <div className="main-controls-container">
+            <div className="controls-header-main">
+              <div className="header-info">
+                <h2 className="controls-title-main">⚙️ Configuración</h2>
+                <span className="controls-description">
+                  {modo === 'mosaico' ? 
+                    `Vista mosaico • ${red} • ${ordenarPorImpacto ? 'Por impacto' : 'Por publicaciones'}` :
+                    `Vista ${modo} • ${red}`
+                  }
+                </span>
               </div>
-              <div className="header-right">
-                {/* Indicadores de estado compactos */}
-                <div className="status-indicators-compact">
-                  {dbLoading && (
-                    <div className="status-badge loading" title="Cargando datos...">⏳</div>
-                  )}
-                  
-                  {dbError && (
-                    <div className="status-badge error" title={`Error: ${dbError}`}>❌</div>
-                  )}
-                  
-                  {stats && (
-                    <div className="status-badge success" title={`${stats.redes.length} redes • ${stats.perfiles.length} perfiles • ${stats.categorias.length} categorías`}>
-                      📊 {stats.totalPublicaciones.toLocaleString()}
-                    </div>
-                  )}
-                  
-                  {csvLoaded && rows.length > 0 && (
-                    <div className="status-badge info" title={`Publicaciones ${fechaInicio || fechaFin ? 'filtradas' : 'totales'}`}>
-                      ✅ {rows.length.toLocaleString()}
-                    </div>
-                  )}
-                </div>
-              </div>
-            </div>
-            <div className="controls-grid-minimal">
-
-
-            {/* Sección de filtros */}
-            <div className="control-section filters-section">
-              <div className="section-title">Filtros</div>
-              <div className="filters-row">
-                <div className="filter-group">
-                  <label className="filter-label">Fechas</label>
-                  <div className="date-inputs">
-                    <input 
-                      type="date"
-                      value={fechaInicio}
-                      onChange={e => setFechaInicio(e.target.value)}
-                      min={fechaMin}
-                      max={fechaMax}
-                      className="date-input compact"
-                      disabled={!fechaMin}
-                      placeholder="Inicio"
-                    />
-                    <input 
-                      type="date"
-                      value={fechaFin}
-                      onChange={e => setFechaFin(e.target.value)}
-                      min={fechaMin}
-                      max={fechaMax}
-                      className="date-input compact"
-                      disabled={!fechaMin}
-                      placeholder="Fin"
-                    />
-                    {(fechaInicio || fechaFin) && (
-                      <button 
-                        onClick={() => {
-                          setFechaInicio('');
-                          setFechaFin('');
-                        }}
-                        className="clear-dates-btn"
-                        title="Limpiar fechas"
-                      >
-                        ✕
-                      </button>
-                    )}
+              <div className="controls-stats">
+                {dbLoading && (
+                  <div className="stat-chip loading">⏳ Cargando...</div>
+                )}
+                {dbError && (
+                  <div className="stat-chip error">❌ Error</div>
+                )}
+                {stats && (
+                  <div className="stat-chip success">
+                    📊 {stats.totalPublicaciones.toLocaleString()} publicaciones
                   </div>
-                </div>
+                )}
               </div>
             </div>
+            
+            <div className="controls-content">
+              {/* Filtros de fecha */}
+              <div className="control-group">
+                <label className="control-label">📅 Período</label>
+                <div className="date-range-selector">
+                  <input 
+                    type="date"
+                    value={fechaInicio}
+                    onChange={e => setFechaInicio(e.target.value)}
+                    min={fechaMin}
+                    max={fechaMax}
+                    className="date-input-main"
+                    disabled={!fechaMin}
+                    placeholder="Inicio"
+                  />
+                  <span className="date-separator">→</span>
+                  <input 
+                    type="date"
+                    value={fechaFin}
+                    onChange={e => setFechaFin(e.target.value)}
+                    min={fechaMin}
+                    max={fechaMax}
+                    className="date-input-main"
+                    disabled={!fechaMin}
+                    placeholder="Fin"
+                  />
+                  {(fechaInicio || fechaFin) && (
+                    <button 
+                      onClick={() => {
+                        setFechaInicio('');
+                        setFechaFin('');
+                      }}
+                      className="clear-date-btn"
+                      title="Limpiar fechas"
+                    >
+                      ✕
+                    </button>
+                  )}
+                </div>
+              </div>
 
-            {/* Sección de vista */}
-            <div className="control-section view-section">
-              <div className="section-title">Vista</div>
-              <div className="view-controls">
-                <div className="control-row">
+              {/* Vista y Red */}
+              <div className="control-group">
+                <label className="control-label">🎯 Vista</label>
+                <div className="view-selector">
                   <select 
                     value={modo} 
                     onChange={e => setModo(e.target.value as any)}
-                    className="select-compact"
+                    className="select-main"
                   >
                     <option value="global">📊 Global</option>
                     <option value="perfil">👤 Por perfil</option>
                     <option value="mosaico">🎯 Mosaico</option>
                   </select>
-
                   <select 
                     value={red} 
                     onChange={e => setRed(e.target.value)}
-                    className="select-compact"
+                    className="select-main"
                   >
                     {Object.keys(aggregated.porRedGlobal).map(r => (
                       <option key={r} value={r}>{r}</option>
@@ -890,7 +878,128 @@ export default function Page() {
                   </select>
                 </div>
               </div>
-            </div>
+
+              {/* Perfil selector (solo en modo perfil) */}
+              {modo === 'perfil' && (
+                <div className="control-group">
+                  <label className="control-label">👤 Perfil</label>
+                  <select 
+                    value={perfil} 
+                    onChange={e => setPerfil(e.target.value)}
+                    className="select-main full-width"
+                  >
+                    <option value="">Seleccionar perfil...</option>
+                    {Array.from(aggregated.perfilesPorRed[red] || []).map(p => (
+                      <option key={p} value={p}>{p}</option>
+                    ))}
+                  </select>
+                </div>
+              )}
+
+              {/* Configuración de mosaico */}
+              {modo === 'mosaico' && (
+                <div className="control-group">
+                  <label className="control-label">📊 Ordenamiento</label>
+                  <div className="mosaic-controls">
+                    <div className="toggle-control">
+                      <label className="toggle-label">
+                        <input 
+                          type="checkbox" 
+                          checked={ordenarPorImpacto}
+                          onChange={e => setOrdenarPorImpacto(e.target.checked)}
+                          className="toggle-input"
+                        />
+                        <span className="toggle-slider"></span>
+                        <span className="toggle-text">
+                          {ordenarPorImpacto ? '🚀 Por impacto (impresiones)' : '📊 Por publicaciones'}
+                        </span>
+                      </label>
+                    </div>
+                    <div className="sort-controls">
+                      <select 
+                        value={catOrder} 
+                        onChange={e => setCatOrder(e.target.value)}
+                        className="select-main"
+                      >
+                        {ALL_CATEGORIES.map(cat => (
+                          <option key={cat} value={cat}>{cat}</option>
+                        ))}
+                      </select>
+                      <select 
+                        value={dirOrder} 
+                        onChange={e => setDirOrder(e.target.value as any)}
+                        className="select-main"
+                      >
+                        <option value="desc">↓ Mayor a menor</option>
+                        <option value="asc">↑ Menor a mayor</option>
+                      </select>
+                    </div>
+                  </div>
+                </div>
+              )}
+
+              {/* Botón de comparación */}
+              <div className="control-group">
+                <label className="control-label">🔄 Comparación</label>
+                <button 
+                  onClick={() => setIsComparing(!isComparing)}
+                  className={`compare-toggle-btn ${isComparing ? 'active' : ''}`}
+                >
+                  {isComparing ? '📊 Vista normal' : '🔄 Comparar perfiles'}
+                </button>
+              </div>
+
+              {/* Controles de comparación */}
+              {isComparing && (
+                <div className="comparison-section">
+                  <div className="comparison-grid">
+                    <div className="comparison-profile">
+                      <label className="comparison-label">🔵 Perfil A</label>
+                      <select 
+                        value={redA} 
+                        onChange={e => setRedA(e.target.value)}
+                        className="select-main"
+                      >
+                        {Object.keys(aggregated.porRedGlobal).map(r => (
+                          <option key={r} value={r}>{r}</option>
+                        ))}
+                      </select>
+                      <select 
+                        value={perfilA} 
+                        onChange={e => setPerfilA(e.target.value)}
+                        className="select-main"
+                      >
+                        <option value="">Seleccionar perfil...</option>
+                        {Array.from(aggregated.perfilesPorRed[redA] || []).map(p => (
+                          <option key={p} value={p}>{p}</option>
+                        ))}
+                      </select>
+                    </div>
+                    <div className="comparison-profile">
+                      <label className="comparison-label">🔴 Perfil B</label>
+                      <select 
+                        value={redB} 
+                        onChange={e => setRedB(e.target.value)}
+                        className="select-main"
+                      >
+                        {Object.keys(aggregated.porRedGlobal).map(r => (
+                          <option key={r} value={r}>{r}</option>
+                        ))}
+                      </select>
+                      <select 
+                        value={perfilB} 
+                        onChange={e => setPerfilB(e.target.value)}
+                        className="select-main"
+                      >
+                        <option value="">Seleccionar perfil...</option>
+                        {Array.from(aggregated.perfilesPorRed[redB] || []).map(p => (
+                          <option key={p} value={p}>{p}</option>
+                        ))}
+                      </select>
+                    </div>
+                  </div>
+                </div>
+              )}
             </div>
           </div>
         </section>
