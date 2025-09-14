@@ -316,15 +316,15 @@ export const withMiddleware = (
 };
 
 // Helper para logging
-export const logRequest = (req: any, res: NextApiResponse, startTime: number) => {
+export const logRequest = (req: any, res: any, startTime: number) => {
   const duration = Date.now() - startTime;
   const logData = {
     method: req.method,
     url: req.url,
-    statusCode: res.statusCode,
+    statusCode: res.statusCode || 200,
     duration: `${duration}ms`,
-    ip: req.ip || req.connection.remoteAddress,
-    userAgent: req.headers['user-agent'],
+    ip: req.ip || req.headers['x-forwarded-for'] || req.headers['x-real-ip'] || 'unknown',
+    userAgent: req.headers.get?.('user-agent') || req.headers['user-agent'],
     timestamp: new Date().toISOString(),
   };
 

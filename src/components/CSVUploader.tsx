@@ -27,20 +27,21 @@ export default function CSVUploader({ onUploadSuccess, onUploadError, onStatusCh
       // En modo compacto, subir automáticamente
       if (compact) {
         console.log('🚀 Auto-uploading in compact mode...')
-        handleUpload(false)
+        handleUpload(false, file)
       }
     }
   }
 
-  const handleUpload = async (overwrite = false) => {
-    console.log('🔄 handleUpload called with:', { selectedFile: selectedFile?.name, overwrite })
-    if (!selectedFile) {
+  const handleUpload = async (overwrite = false, fileToUpload?: File) => {
+    const fileToUse = fileToUpload || selectedFile
+    console.log('🔄 handleUpload called with:', { selectedFile: fileToUse?.name, overwrite })
+    if (!fileToUse) {
       console.log('❌ No file selected')
       return
     }
 
     console.log('📤 Calling uploadCSV...')
-    const result = await uploadCSV(selectedFile, overwrite, onStatusChange)
+    const result = await uploadCSV(fileToUse, overwrite, onStatusChange)
     console.log('📥 Upload result:', result)
 
     if (result.success) {

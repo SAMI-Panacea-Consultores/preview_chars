@@ -44,7 +44,7 @@ export const PublicationQuerySchema = z.object({
   categoria: z.string().optional(),
   fechaInicio: z.string().datetime('Fecha inicio debe ser un datetime válido').optional(),
   fechaFin: z.string().datetime('Fecha fin debe ser un datetime válido').optional(),
-  limit: z.coerce.number().int().min(1).max(1000).default(100),
+  limit: z.coerce.number().int().min(1).max(50000).default(100),
   offset: z.coerce.number().int().min(0).default(0),
   sortBy: z.enum(['fecha', 'impresiones', 'alcance', 'meGusta']).default('fecha'),
   sortOrder: z.enum(['asc', 'desc']).default('desc'),

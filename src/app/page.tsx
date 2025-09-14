@@ -189,6 +189,7 @@ export default function Page() {
   };
 
   const [rows, setRows] = useState<Row[]>([]);
+  const [allRowsForCharts, setAllRowsForCharts] = useState<Row[]>([]);
   const [headers, setHeaders] = useState<string[]>([]);
   const [csvLoaded, setCsvLoaded] = useState(false);
   const [redKey, setRedKey] = useState('Red');
@@ -210,6 +211,10 @@ export default function Page() {
   const [fechaInicio, setFechaInicio] = useState('');
   const [fechaFin, setFechaFin] = useState('');
   
+  // Estados para debouncing de filtros (evitar múltiples llamadas)
+  const [debouncedFechaInicio, setDebouncedFechaInicio] = useState('');
+  const [debouncedFechaFin, setDebouncedFechaFin] = useState('');
+  
   // Estado para el banner de estado CSV
   const [csvStatus, setCsvStatus] = useState<CSVStatusData | null>(null);
 
@@ -219,10 +224,12 @@ export default function Page() {
     loading: dbLoading, 
     error: dbError, 
     refetch: refetchData,
-    stats 
+    fetchAllData,
+    invalidateCache,
+    stats,
+    meta 
   } = usePublicaciones({
-    fechaInicio: fechaInicio || undefined,
-    fechaFin: fechaFin || undefined,
+    // Solo usar filtros de fecha para la primera carga, después filtrar en cliente
     autoFetch: true
   });
 
@@ -246,6 +253,38 @@ export default function Page() {
       }
     }
   }, [dbData]);
+
+  // Cargar todos los datos para las gráficas (solo una vez al inicio)
+  useEffect(() => {
+    const loadAllDataForCharts = async () => {
+      if (fetchAllData) {
+        console.log('🔄 Loading all data for charts...');
+        const allData = await fetchAllData();
+        console.log(`📊 Loaded ${allData.length} records for charts`);
+        setAllRowsForCharts(allData);
+      }
+    };
+
+    // Solo cargar al inicio, no cuando cambian los filtros de fecha
+    loadAllDataForCharts();
+  }, [fetchAllData]); // Removido fechaInicio, fechaFin
+
+  // Debouncing para filtros de fecha (evitar múltiples re-renders)
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      setDebouncedFechaInicio(fechaInicio);
+    }, 300); // 300ms delay
+
+    return () => clearTimeout(timer);
+  }, [fechaInicio]);
+
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      setDebouncedFechaFin(fechaFin);
+    }, 300); // 300ms delay
+
+    return () => clearTimeout(timer);
+  }, [fechaFin]);
 
   // Función para guardar datos de forma segura en localStorage
   function safeSetItem(key: string, value: any): boolean {
@@ -334,9 +373,9 @@ export default function Page() {
 
 
 
-  // Filtrar filas por rango de fechas
+  // Filtrar filas por rango de fechas (para mostrar en tabla) - usando debounced values
   const filteredRows = useMemo(() => {
-    if (!fechaInicio && !fechaFin) return rows;
+    if (!debouncedFechaInicio && !debouncedFechaFin) return rows;
     
     return rows.filter(row => {
       const fecha = parseCSVDate(row['Fecha'] || '');
@@ -344,26 +383,50 @@ export default function Page() {
       
       const fechaSolo = new Date(fecha.getFullYear(), fecha.getMonth(), fecha.getDate());
       
-      if (fechaInicio) {
-        const inicio = new Date(fechaInicio);
+      if (debouncedFechaInicio) {
+        const inicio = new Date(debouncedFechaInicio);
         if (fechaSolo < inicio) return false;
       }
       
-      if (fechaFin) {
-        const fin = new Date(fechaFin);
+      if (debouncedFechaFin) {
+        const fin = new Date(debouncedFechaFin);
         if (fechaSolo > fin) return false;
       }
       
       return true;
     });
-  }, [rows, fechaInicio, fechaFin]);
+  }, [rows, debouncedFechaInicio, debouncedFechaFin]);
 
-  const aggregated = useMemo(() => aggregate(filteredRows, redKey, perfilKey, catKey), [filteredRows, redKey, perfilKey, catKey]);
+  // Filtrar TODOS los datos para las gráficas - usando debounced values
+  const filteredAllRowsForCharts = useMemo(() => {
+    if (!debouncedFechaInicio && !debouncedFechaFin) return allRowsForCharts;
+    
+    return allRowsForCharts.filter(row => {
+      const fecha = parseCSVDate(row['Fecha'] || '');
+      if (!fecha) return false;
+      
+      const fechaSolo = new Date(fecha.getFullYear(), fecha.getMonth(), fecha.getDate());
+      
+      if (debouncedFechaInicio) {
+        const inicio = new Date(debouncedFechaInicio);
+        if (fechaSolo < inicio) return false;
+      }
+      
+      if (debouncedFechaFin) {
+        const fin = new Date(debouncedFechaFin);
+        if (fechaSolo > fin) return false;
+      }
+      
+      return true;
+    });
+  }, [allRowsForCharts, debouncedFechaInicio, debouncedFechaFin]);
+
+  const aggregated = useMemo(() => aggregate(filteredAllRowsForCharts, redKey, perfilKey, catKey), [filteredAllRowsForCharts, redKey, perfilKey, catKey]);
   
   // Calcular impacto por perfil (impresiones)
   const profileImpact = useMemo(() => 
-    calculateImpactByProfile(filteredRows, redKey, perfilKey, catKey, parseNumber), 
-    [filteredRows, redKey, perfilKey, catKey]
+    calculateImpactByProfile(filteredAllRowsForCharts, redKey, perfilKey, catKey, parseNumber), 
+    [filteredAllRowsForCharts, redKey, perfilKey, catKey]
   );
 
   useEffect(() => {
@@ -757,9 +820,14 @@ export default function Page() {
             <div className="csv-uploader-compact">
               <CSVUploader
                 compact={true}
-                onUploadSuccess={(result) => {
+                onUploadSuccess={async (result) => {
                   console.log('Upload success:', result);
+                  // Invalidar caché para forzar recarga de datos frescos
+                  invalidateCache();
                   refetchData();
+                  // Recargar también todos los datos para las gráficas
+                  const allData = await fetchAllData();
+                  setAllRowsForCharts(allData);
                   // El banner ya muestra el éxito, no necesitamos alert
                 }}
                 onUploadError={(error) => {
@@ -785,59 +853,68 @@ export default function Page() {
 
       <main className="dashboard-main">
 
-        {/* Panel de controles mejorado */}
-        <section className="main-controls-section">
-          <div className="main-controls-container">
-            <div className="controls-header-main">
-              <div className="header-info">
-                <h2 className="controls-title-main">⚙️ Configuración</h2>
-                <span className="controls-description">
-                  {modo === 'mosaico' ? 
-                    `Vista mosaico • ${red} • ${ordenarPorImpacto ? 'Por impacto' : 'Por publicaciones'}` :
-                    `Vista ${modo} • ${red}`
-                  }
-                </span>
+        {/* Barra de control compacta */}
+        <section className="control-bar">
+          <div className="control-bar-container">
+            {/* Header con título y stats */}
+            <div className="control-bar-header">
+              <div className="control-title-section">
+                <h2 className="control-title">⚙️ Configuración</h2>
+                <div className="control-stats">
+                  {dbLoading && <div className="status-chip loading">⏳ Cargando</div>}
+                  {dbError && <div className="status-chip error">❌ Error</div>}
+                  {stats && (
+                    <>
+                      <div className="status-chip success">
+                        📊 {stats.totalPublicaciones.toLocaleString()} registros
+                      </div>
+                      <div className="status-chip info">
+                        📱 {stats.redes.length} {stats.redes.length === 1 ? 'red' : 'redes'}
+                      </div>
+                      <div className="status-chip info">
+                        👤 {stats.perfiles.length} {stats.perfiles.length === 1 ? 'perfil' : 'perfiles'}
+                      </div>
+                      <div className="status-chip info">
+                        🏷️ {stats.categorias.length} {stats.categorias.length === 1 ? 'categoría' : 'categorías'}
+                      </div>
+                    </>
+                  )}
+                </div>
               </div>
-              <div className="controls-stats">
-                {dbLoading && (
-                  <div className="stat-chip loading">⏳ Cargando...</div>
-                )}
-                {dbError && (
-                  <div className="stat-chip error">❌ Error</div>
-                )}
-                {stats && (
-                  <div className="stat-chip success">
-                    📊 {stats.totalPublicaciones.toLocaleString()} publicaciones
-                  </div>
-                )}
+              <div className="control-description">
+                {modo === 'mosaico' ? 
+                  `Vista mosaico • ${red} • ${ordenarPorImpacto ? 'Por impacto' : 'Por publicaciones'}` :
+                  `Vista ${modo} • ${red}`
+                }
               </div>
             </div>
-            
-            <div className="controls-content">
-              {/* Filtros de fecha */}
-              <div className="control-group">
-                <label className="control-label">📅 Período</label>
-                <div className="date-range-selector">
+
+            {/* Controles principales en línea */}
+            <div className="control-bar-main">
+              {/* Fechas */}
+              <div className="control-group-inline">
+                <label className="control-label-inline">📅</label>
+                <div className="date-controls-inline">
                   <input 
                     type="date"
                     value={fechaInicio}
                     onChange={e => setFechaInicio(e.target.value)}
                     min={fechaMin}
                     max={fechaMax}
-                    className="date-input-main"
+                    className="date-input-compact"
                     disabled={!fechaMin}
-                    placeholder="Inicio"
+                    title="Fecha inicio"
                   />
-                  <span className="date-separator">→</span>
+                  <span className="date-sep">→</span>
                   <input 
                     type="date"
                     value={fechaFin}
                     onChange={e => setFechaFin(e.target.value)}
                     min={fechaMin}
                     max={fechaMax}
-                    className="date-input-main"
+                    className="date-input-compact"
                     disabled={!fechaMin}
-                    placeholder="Fin"
+                    title="Fecha fin"
                   />
                   {(fechaInicio || fechaFin) && (
                     <button 
@@ -845,7 +922,7 @@ export default function Page() {
                         setFechaInicio('');
                         setFechaFin('');
                       }}
-                      className="clear-date-btn"
+                      className="clear-btn-compact"
                       title="Limpiar fechas"
                     >
                       ✕
@@ -855,40 +932,45 @@ export default function Page() {
               </div>
 
               {/* Vista y Red */}
-              <div className="control-group">
-                <label className="control-label">🎯 Vista</label>
-                <div className="view-selector">
-                  <select 
-                    value={modo} 
-                    onChange={e => setModo(e.target.value as any)}
-                    className="select-main"
-                  >
-                    <option value="global">📊 Global</option>
-                    <option value="perfil">👤 Por perfil</option>
-                    <option value="mosaico">🎯 Mosaico</option>
-                  </select>
-                  <select 
-                    value={red} 
-                    onChange={e => setRed(e.target.value)}
-                    className="select-main"
-                  >
-                    {Object.keys(aggregated.porRedGlobal).map(r => (
-                      <option key={r} value={r}>{r}</option>
-                    ))}
-                  </select>
-                </div>
+              <div className="control-group-inline">
+                <label className="control-label-inline">🎯</label>
+                <select 
+                  value={modo} 
+                  onChange={e => setModo(e.target.value as any)}
+                  className="select-compact"
+                  title="Tipo de vista"
+                >
+                  <option value="global">📊 Global</option>
+                  <option value="perfil">👤 Perfil</option>
+                  <option value="mosaico">🎯 Mosaico</option>
+                </select>
               </div>
 
-              {/* Perfil selector (solo en modo perfil) */}
+              <div className="control-group-inline">
+                <label className="control-label-inline">📱</label>
+                <select 
+                  value={red} 
+                  onChange={e => setRed(e.target.value)}
+                  className="select-compact"
+                  title="Red social"
+                >
+                  {Object.keys(aggregated.porRedGlobal).map(r => (
+                    <option key={r} value={r}>{r}</option>
+                  ))}
+                </select>
+              </div>
+
+              {/* Perfil (solo en modo perfil) */}
               {modo === 'perfil' && (
-                <div className="control-group">
-                  <label className="control-label">👤 Perfil</label>
+                <div className="control-group-inline">
+                  <label className="control-label-inline">👤</label>
                   <select 
                     value={perfil} 
                     onChange={e => setPerfil(e.target.value)}
-                    className="select-main full-width"
+                    className="select-compact select-wide"
+                    title="Perfil específico"
                   >
-                    <option value="">Seleccionar perfil...</option>
+                    <option value="">Seleccionar...</option>
                     {Array.from(aggregated.perfilesPorRed[red] || []).map(p => (
                       <option key={p} value={p}>{p}</option>
                     ))}
@@ -896,111 +978,127 @@ export default function Page() {
                 </div>
               )}
 
-              {/* Configuración de mosaico */}
+              {/* Toggle impacto (solo en mosaico) */}
               {modo === 'mosaico' && (
-                <div className="control-group">
-                  <label className="control-label">📊 Ordenamiento</label>
-                  <div className="mosaic-controls">
-                    <div className="toggle-control">
-                      <label className="toggle-label">
-                        <input 
-                          type="checkbox" 
-                          checked={ordenarPorImpacto}
-                          onChange={e => setOrdenarPorImpacto(e.target.checked)}
-                          className="toggle-input"
-                        />
-                        <span className="toggle-slider"></span>
-                        <span className="toggle-text">
-                          {ordenarPorImpacto ? '🚀 Por impacto (impresiones)' : '📊 Por publicaciones'}
-                        </span>
-                      </label>
-                    </div>
-                    <div className="sort-controls">
-                      <select 
-                        value={catOrder} 
-                        onChange={e => setCatOrder(e.target.value)}
-                        className="select-main"
-                      >
-                        {ALL_CATEGORIES.map(cat => (
-                          <option key={cat} value={cat}>{cat}</option>
-                        ))}
-                      </select>
-                      <select 
-                        value={dirOrder} 
-                        onChange={e => setDirOrder(e.target.value as any)}
-                        className="select-main"
-                      >
-                        <option value="desc">↓ Mayor a menor</option>
-                        <option value="asc">↑ Menor a mayor</option>
-                      </select>
-                    </div>
+                <div className="control-group-inline">
+                  <label className="control-label-inline">🚀</label>
+                  <div className="toggle-compact-with-text">
+                    <input 
+                      type="checkbox" 
+                      id="impact-toggle"
+                      checked={ordenarPorImpacto}
+                      onChange={e => setOrdenarPorImpacto(e.target.checked)}
+                      className="toggle-input-compact"
+                    />
+                    <label htmlFor="impact-toggle" className="toggle-slider-with-text">
+                      <span className="toggle-icon">{ordenarPorImpacto ? '🚀' : '📊'}</span>
+                      <span className="toggle-text">
+                        {ordenarPorImpacto ? 'Por impacto' : 'Por publicaciones'}
+                      </span>
+                    </label>
                   </div>
                 </div>
               )}
 
-              {/* Botón de comparación */}
-              <div className="control-group">
-                <label className="control-label">🔄 Comparación</label>
+              {/* Ordenamiento (solo en mosaico) */}
+              {modo === 'mosaico' && (
+                <>
+                  <div className="control-group-inline">
+                    <label className="control-label-inline">📊</label>
+                    <select 
+                      value={catOrder} 
+                      onChange={e => setCatOrder(e.target.value)}
+                      className="select-compact"
+                      title="Categoría de ordenamiento"
+                    >
+                      {ALL_CATEGORIES.map(cat => (
+                        <option key={cat} value={cat}>{cat.substring(0, 15)}{cat.length > 15 ? '...' : ''}</option>
+                      ))}
+                    </select>
+                  </div>
+
+                  <div className="control-group-inline">
+                    <label className="control-label-inline">↕️</label>
+                    <select 
+                      value={dirOrder} 
+                      onChange={e => setDirOrder(e.target.value as any)}
+                      className="select-compact"
+                      title="Dirección de ordenamiento"
+                    >
+                      <option value="desc">↓ Mayor</option>
+                      <option value="asc">↑ Menor</option>
+                    </select>
+                  </div>
+                </>
+              )}
+
+              {/* Botón comparar */}
+              <div className="control-group-inline">
                 <button 
                   onClick={() => setIsComparing(!isComparing)}
-                  className={`compare-toggle-btn ${isComparing ? 'active' : ''}`}
+                  className={`compare-btn-with-text ${isComparing ? 'active' : ''}`}
+                  title={isComparing ? 'Cancelar comparación' : 'Comparar perfiles'}
                 >
-                  {isComparing ? '📊 Vista normal' : '🔄 Comparar perfiles'}
+                  <span className="btn-icon">{isComparing ? '✕' : '⚖️'}</span>
+                  <span className="btn-text">{isComparing ? 'Cancelar' : 'Comparar'}</span>
                 </button>
               </div>
+            </div>
 
-              {/* Controles de comparación */}
-              {isComparing && (
-                <div className="comparison-section">
-                  <div className="comparison-grid">
-                    <div className="comparison-profile">
-                      <label className="comparison-label">🔵 Perfil A</label>
-                      <select 
-                        value={redA} 
-                        onChange={e => setRedA(e.target.value)}
-                        className="select-main"
-                      >
-                        {Object.keys(aggregated.porRedGlobal).map(r => (
-                          <option key={r} value={r}>{r}</option>
-                        ))}
-                      </select>
-                      <select 
-                        value={perfilA} 
-                        onChange={e => setPerfilA(e.target.value)}
-                        className="select-main"
-                      >
-                        <option value="">Seleccionar perfil...</option>
-                        {Array.from(aggregated.perfilesPorRed[redA] || []).map(p => (
-                          <option key={p} value={p}>{p}</option>
-                        ))}
-                      </select>
-                    </div>
-                    <div className="comparison-profile">
-                      <label className="comparison-label">🔴 Perfil B</label>
-                      <select 
-                        value={redB} 
-                        onChange={e => setRedB(e.target.value)}
-                        className="select-main"
-                      >
-                        {Object.keys(aggregated.porRedGlobal).map(r => (
-                          <option key={r} value={r}>{r}</option>
-                        ))}
-                      </select>
-                      <select 
-                        value={perfilB} 
-                        onChange={e => setPerfilB(e.target.value)}
-                        className="select-main"
-                      >
-                        <option value="">Seleccionar perfil...</option>
-                        {Array.from(aggregated.perfilesPorRed[redB] || []).map(p => (
-                          <option key={p} value={p}>{p}</option>
-                        ))}
-                      </select>
-                    </div>
+            {/* Panel de comparación expandible */}
+            {isComparing && (
+              <div className="comparison-panel">
+                <div className="comparison-controls">
+                  <div className="comparison-side">
+                    <label className="comparison-label-compact">🔵 A</label>
+                    <select 
+                      value={redA} 
+                      onChange={e => setRedA(e.target.value)}
+                      className="select-compact"
+                    >
+                      {Object.keys(aggregated.porRedGlobal).map(r => (
+                        <option key={r} value={r}>{r}</option>
+                      ))}
+                    </select>
+                    <select 
+                      value={perfilA} 
+                      onChange={e => setPerfilA(e.target.value)}
+                      className="select-compact select-wide"
+                    >
+                      <option value="">Perfil...</option>
+                      {Array.from(aggregated.perfilesPorRed[redA] || []).map(p => (
+                        <option key={p} value={p}>{p}</option>
+                      ))}
+                    </select>
+                  </div>
+                  
+                  <div className="comparison-vs">VS</div>
+                  
+                  <div className="comparison-side">
+                    <label className="comparison-label-compact">🔴 B</label>
+                    <select 
+                      value={redB} 
+                      onChange={e => setRedB(e.target.value)}
+                      className="select-compact"
+                    >
+                      {Object.keys(aggregated.porRedGlobal).map(r => (
+                        <option key={r} value={r}>{r}</option>
+                      ))}
+                    </select>
+                    <select 
+                      value={perfilB} 
+                      onChange={e => setPerfilB(e.target.value)}
+                      className="select-compact select-wide"
+                    >
+                      <option value="">Perfil...</option>
+                      {Array.from(aggregated.perfilesPorRed[redB] || []).map(p => (
+                        <option key={p} value={p}>{p}</option>
+                      ))}
+                    </select>
                   </div>
                 </div>
-              )}
-            </div>
+              </div>
+            )}
           </div>
         </section>
 
@@ -1059,7 +1157,7 @@ export default function Page() {
       <footer className="dashboard-footer">
         <div className="footer-stats">
           <div className="footer-stat">
-            <div className="footer-stat-value">{rows.length.toLocaleString()}</div>
+            <div className="footer-stat-value">{(meta?.total || rows.length).toLocaleString()}</div>
             <div className="footer-stat-label">Total filas</div>
           </div>
           {filteredRows.length !== rows.length && (
