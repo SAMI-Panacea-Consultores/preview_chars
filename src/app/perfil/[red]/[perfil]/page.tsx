@@ -5,6 +5,7 @@ import { useParams, useRouter } from 'next/navigation';
 import Papa from 'papaparse';
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, PieChart, Pie, Cell, Legend, Treemap } from 'recharts';
 import html2canvas from 'html2canvas';
+import { usePublicaciones } from '@/hooks/usePublicaciones';
 
 type Row = Record<string, string>;
 
@@ -37,10 +38,7 @@ export default function PerfilDetailPage() {
   const red = decodeURIComponent(params.red as string);
   const perfil = decodeURIComponent(params.perfil as string);
 
-  const [rows, setRows] = useState<Row[]>([]);
   const [allRows, setAllRows] = useState<Row[]>([]); // Para calcular globales
-  const [originalRows, setOriginalRows] = useState<Row[]>([]); // Datos sin filtrar
-  const [loading, setLoading] = useState(true);
   const [isExporting, setIsExporting] = useState(false);
   
   // Estados para filtros de fecha
@@ -49,80 +47,61 @@ export default function PerfilDetailPage() {
   const [fechaMin, setFechaMin] = useState('');
   const [fechaMax, setFechaMax] = useState('');
 
-  // Cargar datos del CSV desde localStorage o fetch
+  // Hook para obtener datos del perfil específico desde la API
+  const { 
+    data: apiData, 
+    loading, 
+    error, 
+    fetchAllData 
+  } = usePublicaciones({
+    red,
+    perfil,
+    autoFetch: true
+  });
+
+  // Cargar todos los datos para calcular el rango de fechas
   useEffect(() => {
-    const loadData = async () => {
-      try {
-        // Intentar obtener datos del localStorage primero
-        const storedData = localStorage.getItem('csvData');
-        if (storedData) {
-          const data = JSON.parse(storedData);
-          setRows(data);
-          setAllRows(data); // Guardar todos los datos para cálculos globales
-          setOriginalRows(data); // Guardar datos originales para filtros
+    const loadAllDataForDateRange = async () => {
+      if (fetchAllData) {
+        try {
+          console.log('📅 Loading all data for date range calculation...');
+          const allData = await fetchAllData();
+          setAllRows(allData);
           
-          // Calcular rango de fechas disponible
-          const fechas = data
+          // Calcular rango de fechas disponible usando todos los datos
+          const fechas = allData
             .map(row => parseCSVDate(row['Fecha'] || ''))
             .filter(Boolean) as Date[];
           
           if (fechas.length > 0) {
             const minFecha = new Date(Math.min(...fechas.map(f => f.getTime())));
             const maxFecha = new Date(Math.max(...fechas.map(f => f.getTime())));
-            setFechaMin(minFecha.toISOString().split('T')[0]);
-            setFechaMax(maxFecha.toISOString().split('T')[0]);
+            const minStr = minFecha.toISOString().split('T')[0];
+            const maxStr = maxFecha.toISOString().split('T')[0];
+            
+            console.log(`📅 Profile date range: ${minStr} to ${maxStr} (${fechas.length} records)`);
+            
+            setFechaMin(minStr);
+            setFechaMax(maxStr);
           }
-          
-          setLoading(false);
-          return;
+        } catch (error) {
+          console.error('Error loading all data for date range:', error);
         }
-
-        // Si no hay datos almacenados, cargar desde el archivo
-        const response = await fetch('/input.csv');
-        const csvText = await response.text();
-        
-        Papa.parse(csvText, {
-          header: true,
-          skipEmptyLines: true,
-          complete: (result) => {
-            const data = result.data as Row[];
-            setRows(data);
-            setAllRows(data); // Guardar todos los datos para cálculos globales
-            setOriginalRows(data); // Guardar datos originales para filtros
-            
-            // Calcular rango de fechas disponible
-            const fechas = data
-              .map(row => parseCSVDate(row['Fecha'] || ''))
-              .filter(Boolean) as Date[];
-            
-            if (fechas.length > 0) {
-              const minFecha = new Date(Math.min(...fechas.map(f => f.getTime())));
-              const maxFecha = new Date(Math.max(...fechas.map(f => f.getTime())));
-              setFechaMin(minFecha.toISOString().split('T')[0]);
-              setFechaMax(maxFecha.toISOString().split('T')[0]);
-            }
-            
-            localStorage.setItem('csvData', JSON.stringify(data));
-            setLoading(false);
-          }
-        });
-      } catch (error) {
-        console.error('Error loading data:', error);
-        setLoading(false);
       }
     };
 
-    loadData();
-  }, []);
+    loadAllDataForDateRange();
+  }, [fetchAllData]);
+
 
   // Filtrar datos por fecha cuando cambien los filtros
-  useEffect(() => {
-    if (originalRows.length === 0) return;
+  const rows = useMemo(() => {
+    if (!apiData || apiData.length === 0) return [];
 
-    let filteredData = [...originalRows];
+    let filteredData = [...apiData];
 
     if (fechaInicio || fechaFin) {
-      filteredData = originalRows.filter(row => {
+      filteredData = filteredData.filter(row => {
         const fecha = parseCSVDate(row['Fecha'] || '');
         if (!fecha) return false;
 
@@ -135,8 +114,8 @@ export default function PerfilDetailPage() {
       });
     }
 
-    setRows(filteredData);
-  }, [fechaInicio, fechaFin, originalRows]);
+    return filteredData;
+  }, [apiData, fechaInicio, fechaFin]);
 
   // Función para parsear fechas del CSV (formato: "M/D/YYYY H:MM am/pm")
   const parseCSVDate = (dateStr: string): Date | null => {
