@@ -239,20 +239,32 @@ export default function Page() {
       setRows(dbData);
       setHeaders(Object.keys(dbData[0]));
       setCsvLoaded(true);
+    }
+  }, [dbData]);
+
+  // Calcular rango de fechas disponibles usando TODOS los datos
+  useEffect(() => {
+    if (allRowsForCharts && allRowsForCharts.length > 0) {
+      console.log('📅 Calculating date range from all data...');
       
-      // Calcular rango de fechas disponibles
-      const fechas = dbData
+      // Calcular rango de fechas disponibles usando todos los datos
+      const fechas = allRowsForCharts
         .map(row => parseCSVDate(row['Fecha'] || '')) // Nota: API devuelve 'Fecha' con F mayúscula
         .filter(Boolean) as Date[];
         
       if (fechas.length > 0) {
         const minFecha = new Date(Math.min(...fechas.map(f => f.getTime())));
         const maxFecha = new Date(Math.max(...fechas.map(f => f.getTime())));
-        setFechaMin(dateToInputValue(minFecha));
-        setFechaMax(dateToInputValue(maxFecha));
+        const minStr = dateToInputValue(minFecha);
+        const maxStr = dateToInputValue(maxFecha);
+        
+        console.log(`📅 Date range: ${minStr} to ${maxStr} (${fechas.length} records)`);
+        
+        setFechaMin(minStr);
+        setFechaMax(maxStr);
       }
     }
-  }, [dbData]);
+  }, [allRowsForCharts]);
 
   // Cargar todos los datos para las gráficas (solo una vez al inicio)
   useEffect(() => {
@@ -330,7 +342,8 @@ export default function Page() {
     try {
       // Si viene en formato ISO (desde la BD), usar directamente
       if (dateStr.includes('T') && dateStr.includes('Z')) {
-        return new Date(dateStr);
+        const date = new Date(dateStr);
+        return isNaN(date.getTime()) ? null : date;
       }
       
       // Si viene en formato M/D/YYYY H:MM am/pm (desde CSV)
