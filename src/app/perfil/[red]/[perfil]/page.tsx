@@ -93,6 +93,16 @@ export default function PerfilDetailPage() {
     loadAllDataForDateRange();
   }, [fetchAllData]);
 
+  // Función para parsear fechas del CSV (formato: "M/D/YYYY H:MM am/pm")
+  const parseCSVDate = (dateStr: string): Date | null => {
+    if (!dateStr) return null;
+    try {
+      const date = new Date(dateStr);
+      return isNaN(date.getTime()) ? null : date;
+    } catch {
+      return null;
+    }
+  };
 
   // Filtrar datos por fecha cuando cambien los filtros
   const rows = useMemo(() => {
@@ -116,17 +126,6 @@ export default function PerfilDetailPage() {
 
     return filteredData;
   }, [apiData, fechaInicio, fechaFin]);
-
-  // Función para parsear fechas del CSV (formato: "M/D/YYYY H:MM am/pm")
-  const parseCSVDate = (dateStr: string): Date | null => {
-    if (!dateStr) return null;
-    try {
-      const date = new Date(dateStr);
-      return isNaN(date.getTime()) ? null : date;
-    } catch {
-      return null;
-    }
-  };
 
   // Función para formatear fecha como YYYY-MM-DD
   const formatDateKey = (date: Date): string => {
