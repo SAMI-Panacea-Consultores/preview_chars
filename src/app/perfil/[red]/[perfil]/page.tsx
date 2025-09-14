@@ -199,13 +199,22 @@ export default function PerfilDetailPage() {
     }
   };
 
-  // Filtrar datos para este perfil específico
+  // Filtrar datos para este perfil específico (con filtros de fecha)
   const perfilData = useMemo(() => {
     return rows.filter(row => 
       (row['Red'] || '').trim() === red && 
       (row['Perfil'] || '').trim() === perfil
     );
   }, [rows, red, perfil]);
+
+  // Total real de publicaciones para este perfil (sin filtros de fecha)
+  const totalPublicaciones = useMemo(() => {
+    if (!allRows || allRows.length === 0) return 0;
+    return allRows.filter(row => 
+      (row['Red'] || '').trim() === red && 
+      (row['Perfil'] || '').trim() === perfil
+    ).length;
+  }, [allRows, red, perfil]);
 
   // Calcular datos globales de la RED para porcentajes (solo la red específica)
   const globalRedData = useMemo(() => {
@@ -470,7 +479,7 @@ export default function PerfilDetailPage() {
               </div>
               <div className="filter-stats">
                 <span className="stat-item">
-                  📊 {rows.filter(row => row['Red'] === red && row['Perfil'] === perfil).length.toLocaleString()} publicaciones
+                  📊 {perfilData.length.toLocaleString()} publicaciones
                 </span>
               </div>
             </div>
@@ -925,7 +934,7 @@ export default function PerfilDetailPage() {
                 border: '1px solid rgba(142, 142, 147, 0.1)'
               }}>
                 <div style={{ fontSize: '24px', fontWeight: '600', color: '#8E8E93', marginBottom: '4px' }}>
-                  {perfilData.length.toLocaleString()}
+                  {totalPublicaciones.toLocaleString()}
                 </div>
                 <div style={{ color: '#8E8E93', fontSize: '12px', fontWeight: '500' }}>
                   Total Publicaciones
