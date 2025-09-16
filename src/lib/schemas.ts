@@ -11,6 +11,18 @@ export const CategoriaSchema = z.enum([
   'Error en procesamiento'
 ]);
 
+// Tipos de publicación disponibles
+export const TipoPublicacionSchema = z.enum([
+  'Publicar',
+  'Historia',
+  'Reel',
+  'Video',
+  'Foto',
+  'Carrusel',
+  'Evento',
+  'Encuesta'
+]);
+
 // Esquema para publicación completa
 export const PublicationSchema = z.object({
   id: z.string().min(1, 'ID es requerido'),
@@ -18,6 +30,7 @@ export const PublicationSchema = z.object({
   red: RedSocialSchema,
   perfil: z.string().min(1, 'Perfil es requerido'),
   categoria: z.string().min(1, 'Categoría es requerida'),
+  tipoPublicacion: z.string().default('Publicar'),
   impresiones: z.number().int().min(0, 'Impresiones debe ser un número positivo'),
   alcance: z.number().int().min(0, 'Alcance debe ser un número positivo'),
   meGusta: z.number().int().min(0, 'Me gusta debe ser un número positivo'),
@@ -42,6 +55,7 @@ export const PublicationQuerySchema = z.object({
   red: RedSocialSchema.optional(),
   perfil: z.string().optional(),
   categoria: z.string().optional(),
+  tipoPublicacion: z.string().optional(),
   fechaInicio: z.string().datetime('Fecha inicio debe ser un datetime válido').optional(),
   fechaFin: z.string().datetime('Fecha fin debe ser un datetime válido').optional(),
   limit: z.coerce.number().int().min(1).max(50000).default(100),
@@ -60,9 +74,10 @@ export const AnalyticsQuerySchema = z.object({
   red: RedSocialSchema.optional(),
   perfil: z.string().optional(),
   categoria: z.string().optional(),
+  tipoPublicacion: z.string().optional(),
   fechaInicio: z.string().datetime().optional(),
   fechaFin: z.string().datetime().optional(),
-  groupBy: z.array(z.enum(['red', 'perfil', 'categoria', 'fecha'])).default([]),
+  groupBy: z.array(z.enum(['red', 'perfil', 'categoria', 'tipoPublicacion', 'fecha'])).default([]),
 });
 
 export const ImpactAnalysisSchema = z.object({

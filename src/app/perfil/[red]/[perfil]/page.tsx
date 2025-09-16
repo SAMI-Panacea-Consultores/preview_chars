@@ -46,6 +46,11 @@ export default function PerfilDetailPage() {
   const [fechaFin, setFechaFin] = useState('');
   const [fechaMin, setFechaMin] = useState('');
   const [fechaMax, setFechaMax] = useState('');
+  
+  // Estado para filtro de tipos de publicación (por defecto excluir Historia)
+  const [tiposPublicacionSeleccionados, setTiposPublicacionSeleccionados] = useState<string[]>([
+    'Publicar', 'Reel', 'Video', 'Foto', 'Carrusel', 'Evento', 'Encuesta'
+  ]);
 
   // Hook para obtener datos del perfil específico desde la API
   const { 
@@ -104,12 +109,24 @@ export default function PerfilDetailPage() {
     }
   };
 
-  // Filtrar datos por fecha cuando cambien los filtros
+  // Filtrar datos por fecha y tipo de publicación cuando cambien los filtros
+  // CAMBIO CRÍTICO: Usar allRows (todos los datos) filtrado por perfil en lugar de apiData (limitado a 100)
   const rows = useMemo(() => {
-    if (!apiData || apiData.length === 0) return [];
+    if (!allRows || allRows.length === 0) return [];
 
-    let filteredData = [...apiData];
+    // Filtrar primero por red y perfil específico desde todos los datos
+    let filteredData = allRows.filter(row => 
+      (row['Red'] || '').trim() === red && 
+      (row['Perfil'] || '').trim() === perfil
+    );
 
+    // Filtro de tipos de publicación (siempre aplicado)
+    filteredData = filteredData.filter(row => {
+      const tipoPublicacion = row['Tipo de publicación'] || 'Publicar';
+      return tiposPublicacionSeleccionados.includes(tipoPublicacion);
+    });
+
+    // Filtro de fechas (solo si están definidas)
     if (fechaInicio || fechaFin) {
       filteredData = filteredData.filter(row => {
         const fecha = parseCSVDate(row['Fecha'] || '');
@@ -125,7 +142,7 @@ export default function PerfilDetailPage() {
     }
 
     return filteredData;
-  }, [apiData, fechaInicio, fechaFin]);
+  }, [apiData, fechaInicio, fechaFin, tiposPublicacionSeleccionados]);
 
   // Función para formatear fecha como YYYY-MM-DD
   const formatDateKey = (date: Date): string => {
@@ -216,7 +233,7 @@ export default function PerfilDetailPage() {
     ).length;
   }, [allRows, red, perfil]);
 
-  // Calcular datos globales de la RED para porcentajes (solo la red específica)
+  // Calcular datos globales de la RED para porcentajes (solo la red específica) - CON FILTROS APLICADOS
   const globalRedData = useMemo(() => {
     const categoryData: Record<string, {
       impresiones: number;
@@ -225,8 +242,29 @@ export default function PerfilDetailPage() {
       count: number;
     }> = {};
 
-    // Filtrar solo los datos de la red específica
-    const redRows = allRows.filter(row => (row['Red'] || '').trim() === red);
+    // Filtrar los datos de la red específica CON LOS MISMOS FILTROS que perfilData
+    let redRows = allRows.filter(row => (row['Red'] || '').trim() === red);
+    
+    // Aplicar filtros de tipo de publicación
+    redRows = redRows.filter(row => {
+      const tipoPublicacion = row['Tipo de publicación'] || 'Publicar';
+      return tiposPublicacionSeleccionados.includes(tipoPublicacion);
+    });
+    
+    // Aplicar filtros de fecha si están definidos
+    if (fechaInicio || fechaFin) {
+      redRows = redRows.filter(row => {
+        const fecha = parseCSVDate(row['Fecha'] || '');
+        if (!fecha) return false;
+
+        const fechaStr = fecha.toISOString().split('T')[0];
+        
+        if (fechaInicio && fechaStr < fechaInicio) return false;
+        if (fechaFin && fechaStr > fechaFin) return false;
+        
+        return true;
+      });
+    }
 
     redRows.forEach(row => {
       const rawCats = (row['categoria'] || '').trim();
@@ -254,7 +292,7 @@ export default function PerfilDetailPage() {
     });
 
     return categoryData;
-  }, [allRows, red]);
+  }, [allRows, red, tiposPublicacionSeleccionados, fechaInicio, fechaFin]);
 
   // Agregar datos por categoría del perfil
   const aggregatedData = useMemo(() => {
@@ -538,6 +576,85 @@ export default function PerfilDetailPage() {
                 </button>
               </div>
             </div>
+            
+            {/* Filtro de tipos de publicación */}
+            <div className="date-filter-row" style={{ marginTop: '16px', paddingTop: '16px', borderTop: '1px solid rgba(0, 0, 0, 0.1)' }}>
+              <div className="filter-title-group">
+                <h4 style={{ margin: 0, fontSize: '14px', fontWeight: '600', color: '#1D1D1F' }}>
+                  📄 Tipos de publicación
+                </h4>
+                <span className="filter-status" style={{ fontSize: '12px', color: '#8E8E93' }}>
+                  {tiposPublicacionSeleccionados.length === 0 ? 'Ninguno seleccionado' :
+                   tiposPublicacionSeleccionados.length === 1 ? tiposPublicacionSeleccionados[0] :
+                   tiposPublicacionSeleccionados.length === 8 ? 'Todos los tipos' :
+                   `${tiposPublicacionSeleccionados.length} tipos seleccionados`}
+                  {!tiposPublicacionSeleccionados.includes('Historia') && tiposPublicacionSeleccionados.length > 0 && (
+                    <span style={{ marginLeft: '8px', color: '#FF3B30' }} title="Historia excluida">🚫 Historia</span>
+                  )}
+                </span>
+              </div>
+              
+              <div style={{ marginTop: '8px' }}>
+                <select 
+                  multiple
+                  value={tiposPublicacionSeleccionados}
+                  onChange={(e) => {
+                    const selectedValues = Array.from(e.target.selectedOptions, option => option.value);
+                    setTiposPublicacionSeleccionados(selectedValues);
+                  }}
+                  className="select-compact multi-select"
+                  title="Tipos de publicación (mantén Ctrl/Cmd para seleccionar múltiples)"
+                  style={{ 
+                    width: '100%', 
+                    minHeight: '80px',
+                    maxHeight: '120px',
+                    fontSize: '13px'
+                  }}
+                >
+                  <option value="Publicar">📝 Publicar</option>
+                  <option value="Historia">📖 Historia</option>
+                  <option value="Reel">🎬 Reel</option>
+                  <option value="Video">📹 Video</option>
+                  <option value="Foto">📷 Foto</option>
+                  <option value="Carrusel">🎠 Carrusel</option>
+                  <option value="Evento">📅 Evento</option>
+                  <option value="Encuesta">📊 Encuesta</option>
+                </select>
+              </div>
+              
+              <div style={{ marginTop: '8px', display: 'flex', gap: '8px' }}>
+                <button 
+                  onClick={() => {
+                    const allTipos = ['Publicar', 'Historia', 'Reel', 'Video', 'Foto', 'Carrusel', 'Evento', 'Encuesta'];
+                    setTiposPublicacionSeleccionados(allTipos);
+                  }}
+                  className="date-btn all-btn"
+                  title="Seleccionar todos los tipos"
+                  style={{ fontSize: '11px' }}
+                >
+                  ✓ Todos
+                </button>
+                <button 
+                  onClick={() => {
+                    const defaultTipos = ['Publicar', 'Reel', 'Video', 'Foto', 'Carrusel', 'Evento', 'Encuesta'];
+                    setTiposPublicacionSeleccionados(defaultTipos);
+                  }}
+                  className="date-btn"
+                  title="Seleccionar predeterminados (sin Historia)"
+                  style={{ fontSize: '11px', background: 'rgba(52, 199, 89, 0.1)', color: '#34C759' }}
+                >
+                  🚫 Sin Historia
+                </button>
+                <button 
+                  onClick={() => setTiposPublicacionSeleccionados([])}
+                  className="date-btn clear-btn"
+                  title="Limpiar selección"
+                  style={{ fontSize: '11px' }}
+                >
+                  ✕ Limpiar
+                </button>
+              </div>
+            </div>
           </div>
         </section>
         {/* Cards de impacto global por categoría - PRINCIPAL */}
@@ -615,6 +732,17 @@ export default function PerfilDetailPage() {
                   ((data.alcance / globalCategoryData.alcance) * 100).toFixed(1) : '0.0';
                 const meGustaPercent = globalCategoryData.meGusta > 0 ? 
                   ((data.meGusta / globalCategoryData.meGusta) * 100).toFixed(1) : '0.0';
+
+                // Debug: Log de cálculos para verificar discrepancias
+                if (category === 'SEGURIDAD' && red === 'Instagram' && perfil.includes('alejo')) {
+                  console.log(`🔍 DEBUG SEGURIDAD - ${perfil}:`, {
+                    perfilImpresiones: data.impresiones,
+                    globalImpresiones: globalCategoryData.impresiones,
+                    porcentajeCalculado: impresionesPercent,
+                    porcentajeEsperado: '50.82%',
+                    filtrosActivos: { fechaInicio, fechaFin, tiposPublicacion: tiposPublicacionSeleccionados.length }
+                  });
+                }
 
                 return (
                   <div key={category} className="horizontal-card" style={{

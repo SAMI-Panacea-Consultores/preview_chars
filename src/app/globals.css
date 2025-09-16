@@ -1827,6 +1827,71 @@ body {
   }
 }
 
+/* Estilos para multi-select compacto */
+.multi-select-compact {
+  position: relative;
+  display: inline-block;
+}
+
+.multi-select-trigger {
+  background: rgba(255, 255, 255, 0.9);
+  border: 1px solid rgba(0, 122, 255, 0.2);
+  border-radius: var(--radius-sm);
+  padding: var(--space-2) var(--space-3);
+  font-size: 13px;
+  font-weight: 500;
+  color: #1D1D1F;
+  cursor: pointer;
+  transition: all 0.2s var(--ease-2);
+  display: flex;
+  align-items: center;
+  gap: var(--space-1);
+  min-width: 120px;
+  justify-content: space-between;
+  font-family: 'SF Pro Display', -apple-system, BlinkMacSystemFont, sans-serif;
+}
+
+.multi-select-trigger:hover {
+  background: rgba(255, 255, 255, 1);
+  border-color: rgba(0, 122, 255, 0.4);
+  box-shadow: 0 2px 8px rgba(0, 122, 255, 0.1);
+}
+
+.multi-select-trigger:active {
+  transform: scale(0.98);
+}
+
+.exclusion-indicator {
+  font-size: 11px;
+  opacity: 0.8;
+  margin-left: var(--space-1);
+}
+
+/* Estilos para select múltiple */
+.select-compact.multi-select {
+  height: auto;
+  min-height: 36px;
+  max-height: 120px;
+  overflow-y: auto;
+  padding: var(--space-1);
+}
+
+.select-compact.multi-select option {
+  padding: var(--space-1) var(--space-2);
+  margin: 1px 0;
+  border-radius: 4px;
+  font-size: 12px;
+}
+
+.select-compact.multi-select option:checked {
+  background: var(--system-blue);
+  color: white;
+}
+
+.select-compact.multi-select option:hover {
+  background: rgba(0, 122, 255, 0.1);
+}
+
 /* Estilos para la sección principal de controles mejorada */
 .main-controls-section {
   margin: 1.5rem 0;

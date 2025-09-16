@@ -55,6 +55,7 @@ async function handleGET(request: NextRequest) {
       red, 
       perfil, 
       categoria, 
+      tipoPublicacion,
       fechaInicio, 
       fechaFin, 
       limit, 
@@ -69,6 +70,7 @@ async function handleGET(request: NextRequest) {
     if (red) where.red = red
     if (perfil) where.perfil = perfil
     if (categoria) where.categoria = categoria
+    if (tipoPublicacion) where.tipoPublicacion = tipoPublicacion
     
     if (fechaInicio || fechaFin) {
       where.fecha = {}
@@ -97,6 +99,7 @@ async function handleGET(request: NextRequest) {
         red: true,
         perfil: true,
         categoria: true,
+        tipoPublicacion: true,
       }
     })
 
@@ -105,6 +108,7 @@ async function handleGET(request: NextRequest) {
       redes: [...new Set(statsData.map(p => p.red))],
       perfiles: [...new Set(statsData.map(p => p.perfil))],
       categorias: [...new Set(statsData.map(p => p.categoria))],
+      tiposPublicacion: [...new Set(statsData.map(p => p.tipoPublicacion))],
     }
 
     const meta = {
@@ -120,6 +124,7 @@ async function handleGET(request: NextRequest) {
       ID: pub.id,
       Fecha: pub.fecha.toISOString(),
       Red: pub.red,
+      'Tipo de publicación': pub.tipoPublicacion,
       Perfil: pub.perfil,
       categoria: pub.categoria,
       Impresiones: pub.impresiones.toString(),
@@ -285,6 +290,7 @@ async function handlePOST(request: NextRequest) {
         if (filters.red) where.red = filters.red
         if (filters.perfil) where.perfil = filters.perfil
         if (filters.categoria) where.categoria = filters.categoria
+        if (filters.tipoPublicacion) where.tipoPublicacion = filters.tipoPublicacion
         if (filters.fechaInicio || filters.fechaFin) {
           where.fecha = {}
           if (filters.fechaInicio) where.fecha.gte = new Date(filters.fechaInicio)
@@ -298,6 +304,7 @@ async function handlePOST(request: NextRequest) {
         redesStats,
         perfilesStats,
         categoriasStats,
+        tiposPublicacionStats,
         metricsStats
       ] = await Promise.all([
         prisma.publicacion.count({ where }),
@@ -335,6 +342,22 @@ async function handlePOST(request: NextRequest) {
 
         prisma.publicacion.groupBy({
           by: ['categoria'],
+          where,
+          _count: { id: true },
+          _sum: {
+            impresiones: true,
+            alcance: true,
+            meGusta: true,
+          },
+          _avg: {
+            impresiones: true,
+            alcance: true,
+            meGusta: true,
+          }
+        }),
+
+        prisma.publicacion.groupBy({
+          by: ['tipoPublicacion'],
           where,
           _count: { id: true },
           _sum: {
@@ -406,6 +429,16 @@ async function handlePOST(request: NextRequest) {
             promedioImpresiones: Math.round(c._avg.impresiones || 0),
             promedioAlcance: Math.round(c._avg.alcance || 0),
             promedioMeGusta: Math.round(c._avg.meGusta || 0),
+          })),
+          tiposPublicacion: tiposPublicacionStats.map(t => ({
+            tipoPublicacion: t.tipoPublicacion,
+            publicaciones: t._count.id,
+            totalImpresiones: t._sum.impresiones || 0,
+            totalAlcance: t._sum.alcance || 0,
+            totalMeGusta: t._sum.meGusta || 0,
+            promedioImpresiones: Math.round(t._avg.impresiones || 0),
+            promedioAlcance: Math.round(t._avg.alcance || 0),
+            promedioMeGusta: Math.round(t._avg.meGusta || 0),
           })),
           metricas: {
             totalImpresiones: metricsStats._sum.impresiones || 0,

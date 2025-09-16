@@ -12,23 +12,25 @@ datasource db {
 }
 
 model Publicacion {
-  id          String   @id // ID único de la publicación del CSV
-  fecha       DateTime
-  red         String   // Instagram, Facebook, etc.
-  perfil      String   // Nombre del perfil
-  categoria   String   // Categoría de la publicación
-  impresiones Int      @default(0)
-  alcance     Int      @default(0)
-  meGusta     Int      @default(0) @map("me_gusta")
+  id              String   @id // ID único de la publicación del CSV
+  fecha           DateTime
+  red             String   // Instagram, Facebook, etc.
+  perfil          String   // Nombre del perfil
+  categoria       String   // Categoría de la publicación
+  tipoPublicacion String   @default("Publicar") @map("tipo_publicacion") // Tipo de publicación (Historia, Publicar, etc.)
+  impresiones     Int      @default(0)
+  alcance         Int      @default(0)
+  meGusta         Int      @default(0) @map("me_gusta")
   
   // Metadatos
-  createdAt   DateTime @default(now()) @map("created_at")
-  updatedAt   DateTime @updatedAt @map("updated_at")
+  createdAt       DateTime @default(now()) @map("created_at")
+  updatedAt       DateTime @updatedAt @map("updated_at")
   
   // Índices para optimizar consultas
   @@index([red])
   @@index([perfil])
   @@index([categoria])
+  @@index([tipoPublicacion])
   @@index([fecha])
   @@map("publicaciones")
 }

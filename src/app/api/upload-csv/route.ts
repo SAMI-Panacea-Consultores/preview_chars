@@ -110,14 +110,15 @@ function parseCSVDate(fechaStr: string): Date {
  *       Importa publicaciones desde un archivo CSV con validación y manejo de duplicados.
  *       
  *       **Formato del CSV:**
- *       - ID: Identificador único de la publicación
- *       - Fecha: Fecha en formato M/D/YYYY H:MM am/pm (ej: 8/2/2025 5:34 pm)
- *       - Red: Red social (Instagram, Facebook, TikTok, Twitter)
- *       - Perfil: Nombre del perfil
- *       - categoria: Categoría de la publicación (puede tener múltiples separadas por comas)
- *       - Impresiones: Número de impresiones (puede tener comas como separadores de miles)
- *       - Alcance: Número de personas alcanzadas
- *       - Me gusta: Número de me gusta
+       *       - ID: Identificador único de la publicación
+       *       - Fecha: Fecha en formato M/D/YYYY H:MM am/pm (ej: 8/2/2025 5:34 pm)
+       *       - Red: Red social (Instagram, Facebook, TikTok, Twitter)
+       *       - Tipo de publicación: Tipo de contenido (Publicar, Historia, Reel, Video, etc.)
+       *       - Perfil: Nombre del perfil
+       *       - categoria: Categoría de la publicación (puede tener múltiples separadas por comas)
+       *       - Impresiones: Número de impresiones (puede tener comas como separadores de miles)
+       *       - Alcance: Número de personas alcanzadas
+       *       - Me gusta: Número de me gusta
  *       
  *       **Manejo de Duplicados:**
  *       - Si overwrite=false: Retorna lista de duplicados para confirmación
@@ -325,7 +326,7 @@ async function handlePOST(request: NextRequest) {
         details: {
           errors: structureValidation.errors,
           foundHeaders: headers,
-          expectedHeaders: ['ID', 'Fecha', 'Red', 'Perfil', 'categoria', 'Impresiones', 'Alcance', 'Me gusta']
+          expectedHeaders: ['ID', 'Fecha', 'Red', 'Tipo de publicación', 'Perfil', 'categoria', 'Impresiones', 'Alcance', 'Me gusta']
         },
         timestamp: new Date().toISOString(),
       }, { status: 400 });
@@ -337,6 +338,7 @@ async function handlePOST(request: NextRequest) {
     const redKey = headers.find(h => h.toLowerCase() === 'red') || 'Red';
     const perfilKey = headers.find(h => h.toLowerCase().includes('perfil')) || 'Perfil';
     const categoriaKey = headers.find(h => h.toLowerCase().includes('categoria')) || 'categoria';
+    const tipoPublicacionKey = headers.find(h => h.toLowerCase().includes('tipo') && h.toLowerCase().includes('publicaci')) || 'Tipo de publicación';
 
     // Verificar duplicados si no se quiere sobrescribir
     const existingIds = new Set();
@@ -402,6 +404,9 @@ async function handlePOST(request: NextRequest) {
       const categories = rawCategories.split(',').map(normalizeCategory).filter(Boolean);
       if (categories.length === 0) categories.push('Sin categoría');
 
+      // Obtener tipo de publicación
+      const tipoPublicacion = (row[tipoPublicacionKey] || 'Publicar').toString().trim();
+
       // Parsear métricas con validación
       const impresiones = parseNumber(row['Impresiones'] || '0');
       const alcance = parseNumber(row['Alcance'] || '0');
@@ -423,6 +428,7 @@ async function handlePOST(request: NextRequest) {
           red,
           perfil,
           categoria,
+          tipoPublicacion,
           impresiones: impresionesPerCategory,
           alcance: alcancePerCategory,
           meGusta: meGustaPerCategory

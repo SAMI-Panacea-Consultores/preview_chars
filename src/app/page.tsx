@@ -215,6 +215,11 @@ export default function Page() {
   const [debouncedFechaInicio, setDebouncedFechaInicio] = useState('');
   const [debouncedFechaFin, setDebouncedFechaFin] = useState('');
   
+  // Estado para filtro de tipos de publicación (por defecto excluir Historia)
+  const [tiposPublicacionSeleccionados, setTiposPublicacionSeleccionados] = useState<string[]>([
+    'Publicar', 'Reel', 'Video', 'Foto', 'Carrusel', 'Evento', 'Encuesta'
+  ]);
+  
   // Estado para el banner de estado CSV
   const [csvStatus, setCsvStatus] = useState<CSVStatusData | null>(null);
 
@@ -410,29 +415,36 @@ export default function Page() {
     });
   }, [rows, debouncedFechaInicio, debouncedFechaFin]);
 
-  // Filtrar TODOS los datos para las gráficas - usando debounced values
+  // Filtrar TODOS los datos para las gráficas - usando debounced values y filtro de tipos de publicación
   const filteredAllRowsForCharts = useMemo(() => {
-    if (!debouncedFechaInicio && !debouncedFechaFin) return allRowsForCharts;
-    
     return allRowsForCharts.filter(row => {
-      const fecha = parseCSVDate(row['Fecha'] || '');
-      if (!fecha) return false;
-      
-      const fechaSolo = new Date(fecha.getFullYear(), fecha.getMonth(), fecha.getDate());
-      
-      if (debouncedFechaInicio) {
-        const inicio = new Date(debouncedFechaInicio);
-        if (fechaSolo < inicio) return false;
+      // Filtro de tipos de publicación (siempre aplicado)
+      const tipoPublicacion = row['Tipo de publicación'] || 'Publicar';
+      if (!tiposPublicacionSeleccionados.includes(tipoPublicacion)) {
+        return false;
       }
       
-      if (debouncedFechaFin) {
-        const fin = new Date(debouncedFechaFin);
-        if (fechaSolo > fin) return false;
+      // Filtro de fechas (solo si están definidas)
+      if (debouncedFechaInicio || debouncedFechaFin) {
+        const fecha = parseCSVDate(row['Fecha'] || '');
+        if (!fecha) return false;
+        
+        const fechaSolo = new Date(fecha.getFullYear(), fecha.getMonth(), fecha.getDate());
+        
+        if (debouncedFechaInicio) {
+          const inicio = new Date(debouncedFechaInicio);
+          if (fechaSolo < inicio) return false;
+        }
+        
+        if (debouncedFechaFin) {
+          const fin = new Date(debouncedFechaFin);
+          if (fechaSolo > fin) return false;
+        }
       }
       
       return true;
     });
-  }, [allRowsForCharts, debouncedFechaInicio, debouncedFechaFin]);
+  }, [allRowsForCharts, debouncedFechaInicio, debouncedFechaFin, tiposPublicacionSeleccionados]);
 
   const aggregated = useMemo(() => aggregate(filteredAllRowsForCharts, redKey, perfilKey, catKey), [filteredAllRowsForCharts, redKey, perfilKey, catKey]);
   
@@ -496,19 +508,53 @@ export default function Page() {
     
     if (ordenarPorImpacto) {
       // Ordenar por impresiones (impacto) usando la categoría seleccionada en "Ordenar por"
-      return perfiles.sort((a, b) => {
+      const sorted = perfiles.sort((a, b) => {
         const av = profileImpact[currentRed]?.[a]?.[category] || 0;
         const bv = profileImpact[currentRed]?.[b]?.[category] || 0;
         
         return direction === 'asc' ? av - bv : bv - av;
       });
+      
+      // Debug: mostrar ordenamiento por impacto
+      console.log(`🚀 Ordenamiento por IMPACTO (${category}, ${direction}):`, 
+        sorted.slice(0, 5).map(p => ({ 
+          perfil: p, 
+          impacto: profileImpact[currentRed]?.[p]?.[category] || 0 
+        }))
+      );
+      
+      return sorted;
     } else {
-      // Ordenar por número de publicaciones (comportamiento original)
-      return perfiles.sort((a, b) => {
-        const av = table[a]?.[category] ?? 0;
-        const bv = table[b]?.[category] ?? 0;
-        return direction === 'asc' ? av - bv : bv - av;
+      // Ordenar por PORCENTAJE de la categoría en cada perfil (no por cantidad absoluta)
+      const sorted = perfiles.sort((a, b) => {
+        const publicacionesA = table[a]?.[category] ?? 0;
+        const publicacionesB = table[b]?.[category] ?? 0;
+        const totalA = aggregated.totalPorPerfil?.[currentRed]?.[a] || 0;
+        const totalB = aggregated.totalPorPerfil?.[currentRed]?.[b] || 0;
+        
+        // Calcular porcentajes
+        const porcentajeA = totalA > 0 ? (publicacionesA / totalA) * 100 : 0;
+        const porcentajeB = totalB > 0 ? (publicacionesB / totalB) * 100 : 0;
+        
+        return direction === 'asc' ? porcentajeA - porcentajeB : porcentajeB - porcentajeA;
       });
+      
+      // Debug: mostrar ordenamiento por porcentaje
+      console.log(`📊 Ordenamiento por PORCENTAJE (${category}, ${direction}):`, 
+        sorted.slice(0, 5).map(p => {
+          const publicaciones = table[p]?.[category] ?? 0;
+          const total = aggregated.totalPorPerfil?.[currentRed]?.[p] || 0;
+          const porcentaje = total > 0 ? ((publicaciones / total) * 100).toFixed(1) : '0';
+          return { 
+            perfil: p, 
+            publicaciones,
+            total,
+            porcentaje: `${porcentaje}%`
+          };
+        })
+      );
+      
+      return sorted;
     }
   }
 
@@ -973,6 +1019,31 @@ export default function Page() {
                 </select>
               </div>
 
+              {/* Filtro de tipos de publicación */}
+              <div className="control-group-inline">
+                <label className="control-label-inline">📄</label>
+                <select 
+                  multiple
+                  value={tiposPublicacionSeleccionados}
+                  onChange={(e) => {
+                    const selectedValues = Array.from(e.target.selectedOptions, option => option.value);
+                    setTiposPublicacionSeleccionados(selectedValues);
+                  }}
+                  className="select-compact multi-select"
+                  title="Tipos de publicación (mantén Ctrl/Cmd para seleccionar múltiples)"
+                  style={{ minWidth: '140px' }}
+                >
+                  <option value="Publicar">Publicar</option>
+                  <option value="Historia">Historia</option>
+                  <option value="Reel">Reel</option>
+                  <option value="Video">Video</option>
+                  <option value="Foto">Foto</option>
+                  <option value="Carrusel">Carrusel</option>
+                  <option value="Evento">Evento</option>
+                  <option value="Encuesta">Encuesta</option>
+                </select>
+              </div>
+
               {/* Perfil (solo en modo perfil) */}
               {modo === 'perfil' && (
                 <div className="control-group-inline">
@@ -1006,7 +1077,7 @@ export default function Page() {
                     <label htmlFor="impact-toggle" className="toggle-slider-with-text">
                       <span className="toggle-icon">{ordenarPorImpacto ? '🚀' : '📊'}</span>
                       <span className="toggle-text">
-                        {ordenarPorImpacto ? 'Por impacto' : 'Por publicaciones'}
+                        {ordenarPorImpacto ? 'Por impacto' : 'Por porcentaje'}
                       </span>
                     </label>
                   </div>
@@ -1143,11 +1214,17 @@ export default function Page() {
                 const counts = aggregated.porPerfil[red]?.[p] || {};
                 const denom = aggregated.totalPorPerfil?.[red]?.[p] || 0;
                 
-                // Título con indicador de impacto si está ordenado por impacto
-                let titulo = p;
+                // Calcular publicaciones filtradas por fecha para este perfil
+                const publicacionesFiltradas = filteredAllRowsForCharts.filter(row => 
+                  (row['Red'] || '').trim() === red && 
+                  (row['Perfil'] || '').trim() === p
+                ).length;
+                
+                // Título con contador de publicaciones filtradas e indicador de impacto
+                let titulo = `📊 ${publicacionesFiltradas} • ${p}`;
                 if (ordenarPorImpacto) {
                   const impacto = profileImpact[red]?.[p]?.[catOrder] || 0;
-                  titulo = `${p} • ${impacto.toLocaleString()} imp.`;
+                  titulo = `📊 ${publicacionesFiltradas} • ${p} • ${impacto.toLocaleString()} imp.`;
                 }
                 
                 return <div key={p}>{renderPieChart(counts, titulo, denom, true, p)}</div>;
