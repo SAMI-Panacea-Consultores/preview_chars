@@ -20,11 +20,15 @@ interface PerfilSinCategoria {
 }
 
 export default function SinCategoriaPage() {
-  // Estados para filtros (solo red y tipos de publicación)
+  // Estados para filtros (igual que el home)
   const [red, setRed] = useState('Instagram');
   const [tiposPublicacionSeleccionados, setTiposPublicacionSeleccionados] = useState<string[]>([
     'Publicar', 'Historia', 'Reel', 'Video', 'Foto', 'Carrusel', 'Evento', 'Encuesta'
   ]);
+
+  // Estados para filtros de fecha
+  const [fechaInicio, setFechaInicio] = useState('');
+  const [fechaFin, setFechaFin] = useState('');
 
   // Estado para colapsar/expandir filtros
   const [filtersExpanded, setFiltersExpanded] = useState(false);
@@ -85,19 +89,29 @@ export default function SinCategoriaPage() {
     loadAllDataForAnalysis();
   }, [fetchAllData]);
 
-  // Calcular rango de fechas disponibles (solo para información)
+  // Calcular rango de fechas disponibles (formato correcto para inputs date)
   const { fechaMin, fechaMax } = useMemo(() => {
     if (!completeData || completeData.length === 0) return { fechaMin: '', fechaMax: '' };
     
     const fechas = completeData
-      .map(item => item.Fecha)
-      .filter(fecha => fecha && fecha.trim() !== '')
-      .sort();
+      .map(item => {
+        const fecha = new Date(item.Fecha);
+        return !isNaN(fecha.getTime()) ? fecha : null;
+      })
+      .filter(Boolean) as Date[];
     
-    return {
-      fechaMin: fechas[0] || '',
-      fechaMax: fechas[fechas.length - 1] || ''
-    };
+    if (fechas.length === 0) return { fechaMin: '', fechaMax: '' };
+    
+    const minFecha = new Date(Math.min(...fechas.map(f => f.getTime())));
+    const maxFecha = new Date(Math.max(...fechas.map(f => f.getTime())));
+    
+    // Formatear para inputs tipo date (YYYY-MM-DD)
+    const fechaMin = minFecha.toISOString().split('T')[0];
+    const fechaMax = maxFecha.toISOString().split('T')[0];
+    
+    console.log(`📅 Date range calculated: ${fechaMin} to ${fechaMax} (${fechas.length} valid dates)`);
+    
+    return { fechaMin, fechaMax };
   }, [completeData]);
 
   // Obtener redes disponibles
@@ -106,7 +120,7 @@ export default function SinCategoriaPage() {
     return [...new Set(completeData.map(item => item.Red))].filter(Boolean);
   }, [completeData]);
 
-  // Filtrar datos solo por red y tipos de publicación (SIN filtros de fecha)
+  // Filtrar datos por red, tipos de publicación Y fechas (como el home)
   const filteredData = useMemo(() => {
     if (!completeData || completeData.length === 0) return [];
 
@@ -117,9 +131,27 @@ export default function SinCategoriaPage() {
       // Filtro por tipos de publicación
       if (!tiposPublicacionSeleccionados.includes(item['Tipo de publicación'])) return false;
 
+      // Filtro por fechas (si están definidas)
+      if (fechaInicio || fechaFin) {
+        const fecha = new Date(item.Fecha);
+        if (!fecha || isNaN(fecha.getTime())) return false;
+        
+        const fechaSolo = new Date(fecha.getFullYear(), fecha.getMonth(), fecha.getDate());
+        
+        if (fechaInicio) {
+          const inicio = new Date(fechaInicio);
+          if (fechaSolo < inicio) return false;
+        }
+        
+        if (fechaFin) {
+          const fin = new Date(fechaFin);
+          if (fechaSolo > fin) return false;
+        }
+      }
+
       return true;
     });
-  }, [completeData, red, tiposPublicacionSeleccionados]);
+  }, [completeData, red, tiposPublicacionSeleccionados, fechaInicio, fechaFin]);
 
   // Calcular métricas por perfil usando TODOS los datos históricos
   const perfilesSinCategoria = useMemo(() => {
@@ -247,7 +279,16 @@ export default function SinCategoriaPage() {
     return result;
   }, [filteredData, red, fechaMin, fechaMax]);
 
-  // Estadísticas resumen
+  // Estadísticas locales para el panel de filtros
+  const localStats = useMemo(() => {
+    if (!completeData || completeData.length === 0) return null;
+    
+    return {
+      totalPublicaciones: completeData.length,
+      totalSinCategoria: perfilesSinCategoria.reduce((sum, p) => sum + p.publicacionesSinCategoria, 0),
+      totalPerfiles: perfilesSinCategoria.length
+    };
+  }, [completeData, perfilesSinCategoria]);
   const resumenStats = useMemo(() => {
     const totalPerfiles = perfilesSinCategoria.length;
     const totalPublicacionesSinCategoria = perfilesSinCategoria.reduce((sum, p) => sum + p.publicacionesSinCategoria, 0);
@@ -299,22 +340,23 @@ export default function SinCategoriaPage() {
                     </span>
                   </button>
                 </div>
-                {filtersExpanded && stats && (
+                {filtersExpanded && localStats && (
                   <div className="filters-stats">
                     <div className="status-chip success">
-                      📊 {stats.totalPublicaciones.toLocaleString()} registros totales
+                      📊 {localStats.totalPublicaciones.toLocaleString()} registros totales
                     </div>
                     <div className="status-chip info">
                       📱 {redesDisponibles.length} {redesDisponibles.length === 1 ? 'red' : 'redes'}
                     </div>
                     <div className="status-chip warning">
-                      ⚠️ {resumenStats.totalPublicacionesSinCategoria} sin categoría
+                      ⚠️ {localStats.totalSinCategoria.toLocaleString()} sin categoría
                     </div>
-                    {fechaInicio && fechaFin && (
-                      <div className="status-chip info">
-                        📅 Últimos 7 días ({fechaInicio} a {fechaFin})
-                      </div>
-                    )}
+                    <div className="status-chip info">
+                      👥 {localStats.totalPerfiles} perfiles analizados
+                    </div>
+                    <div className="status-chip info">
+                      📅 Datos históricos completos ({fechaMin} a {fechaMax})
+                    </div>
                   </div>
                 )}
               </div>
@@ -323,6 +365,73 @@ export default function SinCategoriaPage() {
             {/* Contenido colapsable del panel */}
             <div className={`filters-content ${filtersExpanded ? 'expanded' : 'collapsed'}`}>
               <div className="filters-grid">
+
+                {/* Sección: Rango de Fechas */}
+                <div className="filter-section">
+                  <div className="filter-section-header">
+                    <h3 className="filter-section-title">📅 Período de Tiempo</h3>
+                    {(fechaInicio || fechaFin) && (
+                      <button 
+                        onClick={() => {
+                          setFechaInicio('');
+                          setFechaFin('');
+                        }}
+                        className="filter-clear-btn"
+                        title="Limpiar fechas"
+                      >
+                        ✕ Limpiar
+                      </button>
+                    )}
+                  </div>
+                  <div className="date-range-container">
+                    <div className="date-input-group">
+                      <label className="date-label">Desde</label>
+                      <input 
+                        type="date"
+                        value={fechaInicio}
+                        onChange={e => {
+                          const newValue = e.target.value;
+                          // Validar que esté dentro del rango
+                          if (newValue >= fechaMin && newValue <= fechaMax) {
+                            setFechaInicio(newValue);
+                          }
+                        }}
+                        min={fechaMin}
+                        max={fechaMax}
+                        className="date-input-modern"
+                        disabled={!fechaMin}
+                        placeholder="Fecha inicio"
+                        title={`Rango disponible: ${fechaMin} a ${fechaMax}`}
+                      />
+                    </div>
+                    <div className="date-separator">→</div>
+                    <div className="date-input-group">
+                      <label className="date-label">Hasta</label>
+                      <input 
+                        type="date"
+                        value={fechaFin}
+                        onChange={e => {
+                          const newValue = e.target.value;
+                          // Validar que esté dentro del rango
+                          if (newValue >= fechaMin && newValue <= fechaMax) {
+                            setFechaFin(newValue);
+                          }
+                        }}
+                        min={fechaMin}
+                        max={fechaMax}
+                        className="date-input-modern"
+                        disabled={!fechaMin}
+                        placeholder="Fecha fin"
+                        title={`Rango disponible: ${fechaMin} a ${fechaMax}`}
+                      />
+                    </div>
+                  </div>
+                  {fechaMin && fechaMax && (
+                    <div className="date-range-info">
+                      Rango disponible: {fechaMin} a {fechaMax}
+                    </div>
+                  )}
+                </div>
 
                 {/* Sección: Red Social */}
                 <div className="filter-section">
@@ -397,12 +506,19 @@ export default function SinCategoriaPage() {
                 <span className="active-filter-chip">
                   📱 {red}
                 </span>
+                {(fechaInicio || fechaFin) && (
+                  <span className="active-filter-chip">
+                    📅 {fechaInicio || 'inicio'} → {fechaFin || 'fin'}
+                  </span>
+                )}
                 <span className="active-filter-chip">
                   📄 {tiposPublicacionSeleccionados.length} tipos
                 </span>
-                <span className="active-filter-chip">
-                  📊 Datos históricos completos ({fechaMin} a {fechaMax})
-                </span>
+                {!fechaInicio && !fechaFin && (
+                  <span className="active-filter-chip">
+                    📊 Datos históricos completos ({fechaMin} a {fechaMax})
+                  </span>
+                )}
               </div>
             </div>
           </div>
