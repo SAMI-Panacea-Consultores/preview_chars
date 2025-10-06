@@ -3,6 +3,8 @@
 import { useState, useEffect, useMemo } from 'react';
 import Link from 'next/link';
 import CSVUploader from '@/components/CSVUploader';
+import { useCategorizePending } from '@/hooks/useCategorizePending';
+import { useCleanupPending } from '@/hooks/useCleanupPending';
 
 interface CsvSession {
   id: string;
@@ -80,6 +82,39 @@ export default function CsvSessionsPage() {
   const [fileNameFilter, setFileNameFilter] = useState<string>('');
   const [startDateFilter, setStartDateFilter] = useState<string>('');
   const [endDateFilter, setEndDateFilter] = useState<string>('');
+
+  // Hook de categorización automática
+  const { isProcessing, result, error: processingError, startProcessing, reset } = useCategorizePending();
+
+  // Hook de limpieza de registros sin contenido
+  const { isCleaningUp, result: cleanupResult, error: cleanupError, startCleanup, reset: resetCleanup } = useCleanupPending();
+
+  // Función para iniciar el procesamiento automático
+  const handleStartProcessing = async () => {
+    try {
+      await startProcessing({
+        batchSize: 10,
+        delayMs: 2000
+      });
+      
+      // Refrescar las estadísticas después del procesamiento
+      fetchSessions(pagination.page);
+    } catch (error) {
+      console.error('Error en procesamiento:', error);
+    }
+  };
+
+  // Función para iniciar la limpieza de registros sin contenido
+  const handleStartCleanup = async () => {
+    try {
+      await startCleanup();
+      
+      // Refrescar las estadísticas después de la limpieza
+      fetchSessions(pagination.page);
+    } catch (error) {
+      console.error('Error en limpieza:', error);
+    }
+  };
 
   const fetchSessions = async (page: number = 1) => {
     try {
@@ -217,9 +252,76 @@ export default function CsvSessionsPage() {
             <div className="stat-label-clean">Duplicados (No Subidos)</div>
           </div>
           
-          <div className="stat-card-clean info">
-            <div className="stat-number">{stats.pendingRecords.toLocaleString()}</div>
-            <div className="stat-label-clean">Registros Pendientes</div>
+          <div className="stat-card-clean info processing-card">
+            <div className="stat-content">
+              <div className="stat-number">{stats.pendingRecords.toLocaleString()}</div>
+              <div className="stat-label-clean">Registros Pendientes</div>
+            </div>
+            {stats.pendingRecords > 0 && (
+              <div className="processing-actions">
+                <button 
+                  onClick={handleStartProcessing}
+                  disabled={isProcessing || isCleaningUp}
+                  className={`btn-process ${isProcessing ? 'processing' : ''}`}
+                  title="Procesar registros pendientes con GPT-5"
+                >
+                  {isProcessing ? (
+                    <>
+                      <span className="spinner"></span>
+                      Procesando...
+                    </>
+                  ) : (
+                    <>
+                      🤖 Procesar con GPT-5
+                    </>
+                  )}
+                </button>
+                
+                <button 
+                  onClick={handleStartCleanup}
+                  disabled={isProcessing || isCleaningUp}
+                  className={`btn-cleanup ${isCleaningUp ? 'cleaning' : ''}`}
+                  title="Eliminar registros pendientes sin contenido (no se pueden procesar)"
+                >
+                  {isCleaningUp ? (
+                    <>
+                      <span className="spinner"></span>
+                      Limpiando...
+                    </>
+                  ) : (
+                    <>
+                      🗑️ Limpiar Sin Contenido
+                    </>
+                  )}
+                </button>
+                
+                {result && (
+                  <div className="processing-result">
+                    <div className="result-summary">
+                      ✅ {result.stats.procesados} procesados, {result.stats.errores} errores
+                    </div>
+                  </div>
+                )}
+                {processingError && (
+                  <div className="processing-error">
+                    ❌ {processingError}
+                  </div>
+                )}
+                
+                {cleanupResult && (
+                  <div className="cleanup-result">
+                    <div className="result-summary">
+                      🗑️ {cleanupResult.stats.eliminados} eliminados, {cleanupResult.stats.conservados} conservados
+                    </div>
+                  </div>
+                )}
+                {cleanupError && (
+                  <div className="processing-error">
+                    ❌ {cleanupError}
+                  </div>
+                )}
+              </div>
+            )}
           </div>
         </div>
       </div>
