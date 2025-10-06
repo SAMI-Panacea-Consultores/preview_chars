@@ -48,6 +48,7 @@ interface CsvSessionsResponse {
     partialSessions: number;
     totalRecordsProcessed: number;
     totalErrors: number;
+    pendingRecords: number;
   };
 }
 
@@ -70,7 +71,8 @@ export default function CsvSessionsPage() {
     processingSessions: 0,
     partialSessions: 0,
     totalRecordsProcessed: 0,
-    totalErrors: 0
+    totalErrors: 0,
+    pendingRecords: 0
   });
 
   // Filtros
@@ -213,6 +215,11 @@ export default function CsvSessionsPage() {
               {sessions.reduce((total, session) => total + (session.duplicateRows || 0), 0).toLocaleString()}
             </div>
             <div className="stat-label-clean">Duplicados (No Subidos)</div>
+          </div>
+          
+          <div className="stat-card-clean info">
+            <div className="stat-number">{stats.pendingRecords.toLocaleString()}</div>
+            <div className="stat-label-clean">Registros Pendientes</div>
           </div>
         </div>
       </div>

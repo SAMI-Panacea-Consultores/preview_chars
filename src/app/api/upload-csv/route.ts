@@ -21,6 +21,7 @@ function normalizeCategory(raw: string): string {
   if (/invertir.*para.*crecer/i.test(c)) return 'INVERTIR PARA CRECER';
   if (/seguridad/i.test(c)) return 'SEGURIDAD';
   if (/transparencia.*publica/i.test(c)) return 'TRANSPARENCIA PÚBLICA';
+  if (/pendiente/i.test(c)) return 'Pendiente';
   if (/error/i.test(c)) return 'Error en procesamiento';
   if (/estrategia/i.test(c)) return 'Sin categoría';
   
@@ -118,6 +119,8 @@ function parseCSVDate(fechaStr: string): Date {
  *       - Tipo de publicación: Tipo de contenido (Publicar, Reel, Video, etc.) - Las "Historia" se excluyen
  *       - Perfil: Nombre del perfil
  *       - categoria: Categoría de la publicación (puede tener múltiples separadas por comas)
+ *                   Si la columna no existe en el CSV, se asigna automáticamente "Pendiente"
+ *                   Si la columna existe pero está vacía, se asigna "Sin categoría"
  *       - Impresiones: Número de impresiones (puede tener comas como separadores de miles)
  *       - Alcance: Número de personas alcanzadas
  *       - Me gusta: Número de me gusta
@@ -446,9 +449,21 @@ async function handlePOST(request: NextRequest) {
       }
 
       // Procesar categorías múltiples
+      const hasCategoriasColumn = headers.some(h => h.toLowerCase().includes('categoria'));
       const rawCategories = (row[categoriaKey] || '').toString();
-      const categories = rawCategories.split(',').map(normalizeCategory).filter(Boolean);
-      if (categories.length === 0) categories.push('Sin categoría');
+      
+      let categories: string[] = [];
+      
+      if (hasCategoriasColumn) {
+        // La columna existe, procesar normalmente
+        categories = rawCategories.split(',').map(normalizeCategory).filter(Boolean);
+        if (categories.length === 0) {
+          categories.push('Sin categoría'); // Columna existe pero está vacía
+        }
+      } else {
+        // La columna no existe en el CSV -> asignar "Pendiente"
+        categories.push('Pendiente');
+      }
 
       // Obtener tipo de publicación
       const tipoPublicacion = (row[tipoPublicacionKey] || 'Publicar').toString().trim();

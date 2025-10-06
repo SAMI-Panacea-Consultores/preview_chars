@@ -54,6 +54,7 @@ function calculateImpactByProfile(rows: Row[], redKey: string, perfilKey: string
     if (/invertir.*para.*crecer/i.test(c)) return 'INVERTIR PARA CRECER';
     if (/seguridad/i.test(c)) return 'SEGURIDAD';
     if (/transparencia.*publica/i.test(c)) return 'TRANSPARENCIA PÚBLICA';
+    if (/pendiente/i.test(c)) return 'Pendiente';
     if (/error/i.test(c)) return 'Error en procesamiento';
     if (/estrategia/i.test(c)) return 'Sin categoría';
     
@@ -129,6 +130,7 @@ function aggregate(rows: Row[], redKey: string, perfilKey: string, catKey: strin
     if (/invertir.*para.*crecer/i.test(c)) c = 'INVERTIR PARA CRECER';
     if (/seguridad/i.test(c)) c = 'SEGURIDAD';
     if (/transparencia.*publica/i.test(c)) c = 'TRANSPARENCIA PÚBLICA';
+    if (/pendiente/i.test(c)) c = 'Pendiente';
     if (/^error en procesamiento$/i.test(c)) c = 'Error en procesamiento';
     
     return c;

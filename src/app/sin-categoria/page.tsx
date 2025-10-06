@@ -331,6 +331,7 @@ export default function SinCategoriaPage() {
       if (/invertir.*para.*crecer/i.test(c)) c = 'INVERTIR PARA CRECER';
       if (/seguridad/i.test(c)) c = 'SEGURIDAD';
       if (/transparencia.*publica/i.test(c)) c = 'TRANSPARENCIA PÚBLICA';
+      if (/pendiente/i.test(c)) c = 'Pendiente';
       if (/^error en procesamiento$/i.test(c)) c = 'Error en procesamiento';
       
       return c;

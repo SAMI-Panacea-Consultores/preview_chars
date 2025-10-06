@@ -103,6 +103,9 @@ import { ApiResponse, withErrorHandling, withMethods, withCORS, withRateLimit, l
  *                       type: integer
  *                     totalRecordsProcessed:
  *                       type: integer
+ *                     pendingRecords:
+ *                       type: integer
+ *                       description: Número de registros en la base de datos con categoría "Pendiente"
  *       400:
  *         $ref: '#/components/responses/ValidationError'
  *       429:
@@ -171,13 +174,19 @@ async function handleGET(request: NextRequest) {
     ]);
     
     // Calcular estadísticas globales
-    const [stats] = await Promise.all([
+    const [stats, pendingCount] = await Promise.all([
       prisma.csvSession.aggregate({
         _count: { id: true },
         _sum: { 
           insertedRows: true,
           updatedRows: true,
           errorRows: true
+        }
+      }),
+      // Contar registros con categoría "Pendiente"
+      prisma.publicacion.count({
+        where: {
+          categoria: 'Pendiente'
         }
       })
     ]);
@@ -252,7 +261,8 @@ async function handleGET(request: NextRequest) {
         processingSessions: statusMap.processing || 0,
         partialSessions: statusMap.partial || 0,
         totalRecordsProcessed: (stats._sum.insertedRows || 0) + (stats._sum.updatedRows || 0),
-        totalErrors: stats._sum.errorRows || 0
+        totalErrors: stats._sum.errorRows || 0,
+        pendingRecords: pendingCount || 0
       }
     });
     
