@@ -109,16 +109,22 @@ function parseCSVDate(fechaStr: string): Date {
  *     description: |
  *       Importa publicaciones desde un archivo CSV con validación y manejo de duplicados.
  *       
+ *       **IMPORTANTE:** Las publicaciones de tipo "Historia" se excluyen automáticamente y NO se guardan en la base de datos.
+ *       
  *       **Formato del CSV:**
-       *       - ID: Identificador único de la publicación
-       *       - Fecha: Fecha en formato M/D/YYYY H:MM am/pm (ej: 8/2/2025 5:34 pm)
-       *       - Red: Red social (Instagram, Facebook, TikTok, Twitter)
-       *       - Tipo de publicación: Tipo de contenido (Publicar, Historia, Reel, Video, etc.)
-       *       - Perfil: Nombre del perfil
-       *       - categoria: Categoría de la publicación (puede tener múltiples separadas por comas)
-       *       - Impresiones: Número de impresiones (puede tener comas como separadores de miles)
-       *       - Alcance: Número de personas alcanzadas
-       *       - Me gusta: Número de me gusta
+ *       - ID: Identificador único de la publicación
+ *       - Fecha: Fecha en formato M/D/YYYY H:MM am/pm (ej: 8/2/2025 5:34 pm)
+ *       - Red: Red social (Instagram, Facebook, TikTok, Twitter)
+ *       - Tipo de publicación: Tipo de contenido (Publicar, Reel, Video, etc.) - Las "Historia" se excluyen
+ *       - Perfil: Nombre del perfil
+ *       - categoria: Categoría de la publicación (puede tener múltiples separadas por comas)
+ *       - Impresiones: Número de impresiones (puede tener comas como separadores de miles)
+ *       - Alcance: Número de personas alcanzadas
+ *       - Me gusta: Número de me gusta
+ *       
+ *       **Filtros Automáticos:**
+ *       - Se excluyen automáticamente todas las publicaciones de tipo "Historia"
+ *       - El contador de historias excluidas se reporta en la respuesta
  *       
  *       **Manejo de Duplicados:**
  *       - Si overwrite=false: Retorna lista de duplicados para confirmación
@@ -353,6 +359,7 @@ async function handlePOST(request: NextRequest) {
     const publicacionesToInsert = [];
     const duplicateIds = [];
     const invalidRows = [];
+    const excludedHistorias = []; // Contador de historias excluidas
     
     for (let rowIndex = 0; rowIndex < data.length; rowIndex++) {
       const row = data[rowIndex];
@@ -406,6 +413,19 @@ async function handlePOST(request: NextRequest) {
 
       // Obtener tipo de publicación
       const tipoPublicacion = (row[tipoPublicacionKey] || 'Publicar').toString().trim();
+
+      // FILTRO: Excluir publicaciones de tipo "Historia"
+      if (tipoPublicacion.toLowerCase().includes('historia')) {
+        // Registrar la historia excluida para estadísticas
+        excludedHistorias.push({
+          row: rowIndex + 1,
+          id: id,
+          perfil: perfil,
+          tipo: tipoPublicacion
+        });
+        // Saltar esta fila sin procesarla
+        continue;
+      }
 
       // Parsear métricas con validación
       const impresiones = parseNumber(row['Impresiones'] || '0');
@@ -514,15 +534,20 @@ async function handlePOST(request: NextRequest) {
       errors: result.errors,
       totalRows: data.length,
       processedRows: publicacionesToInsert.length,
+      excludedHistorias: excludedHistorias.length, // Nuevas estadísticas
       message: overwrite 
-        ? `${result.inserted} publicaciones procesadas (insertadas/actualizadas)`
-        : `${result.inserted} nuevas publicaciones insertadas`,
+        ? `${result.inserted} publicaciones procesadas (insertadas/actualizadas). ${excludedHistorias.length} historias excluidas automáticamente.`
+        : `${result.inserted} nuevas publicaciones insertadas. ${excludedHistorias.length} historias excluidas automáticamente.`,
       stats: {
         fileSize: `${(file.size / 1024).toFixed(2)} KB`,
         processingTime: `${Date.now() - startTime}ms`,
         categoriesFound: [...new Set(publicacionesToInsert.map(p => p.categoria))],
         profilesFound: [...new Set(publicacionesToInsert.map(p => p.perfil))],
-        networksFound: [...new Set(publicacionesToInsert.map(p => p.red))]
+        networksFound: [...new Set(publicacionesToInsert.map(p => p.red))],
+        excludedHistorias: excludedHistorias.length > 0 ? {
+          count: excludedHistorias.length,
+          examples: excludedHistorias.slice(0, 5).map(h => `${h.perfil} - ${h.tipo}`)
+        } : null
       }
     }, { status: 201 });
 
