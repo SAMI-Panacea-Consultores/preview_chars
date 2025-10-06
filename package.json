@@ -16,6 +16,7 @@
     "express-rate-limit": "^8.0.1",
     "helmet": "^8.1.0",
     "html2canvas": "^1.4.1",
+    "jspdf": "^3.0.3",
     "lightweight-charts": "^5.0.9",
     "next": "^14.2.10",
     "next-swagger-doc": "^0.4.1",

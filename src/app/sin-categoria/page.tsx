@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useMemo } from 'react';
 import { usePublicaciones } from '@/hooks/usePublicaciones';
+import jsPDF from 'jspdf';
 
 // Tipos para las métricas de perfiles
 interface PerfilSinCategoria {
@@ -18,6 +19,151 @@ interface PerfilSinCategoria {
   compartidos: number;
   guardados: number;
 }
+
+// Función para generar PDF ejecutivo
+const generateExecutivePDF = (
+  perfiles: PerfilSinCategoria[], 
+  red: string, 
+  fechaInicio: string, 
+  fechaFin: string,
+  fechaMin: string,
+  fechaMax: string
+) => {
+  const doc = new jsPDF();
+  
+  // Configurar fuente
+  doc.setFont('helvetica');
+  
+  // Header del documento
+  doc.setFontSize(20);
+  doc.setTextColor(51, 51, 51);
+  doc.text('Reporte Ejecutivo: Desalineación de Contenido', 20, 25);
+  
+  // Información del reporte
+  doc.setFontSize(12);
+  doc.setTextColor(102, 102, 102);
+  const fechaGeneracion = new Date().toLocaleDateString('es-ES', {
+    year: 'numeric',
+    month: 'long',
+    day: 'numeric',
+    hour: '2-digit',
+    minute: '2-digit'
+  });
+  doc.text(`Generado: ${fechaGeneracion}`, 20, 35);
+  
+  // Parámetros del análisis
+  doc.setFontSize(11);
+  doc.setTextColor(68, 68, 68);
+  const periodoTexto = (fechaInicio && fechaFin) 
+    ? `${fechaInicio} a ${fechaFin}` 
+    : `Datos históricos completos (${fechaMin} a ${fechaMax})`;
+  doc.text(`Red Social: ${red}`, 20, 45);
+  doc.text(`Período de Análisis: ${periodoTexto}`, 20, 52);
+  doc.text(`Total de Perfiles Analizados: ${perfiles.length}`, 20, 59);
+  
+  // Resumen ejecutivo
+  const totalPublicaciones = perfiles.reduce((sum, p) => sum + p.totalHistorico, 0);
+  const totalDesalineadas = perfiles.reduce((sum, p) => sum + p.publicacionesSinCategoria, 0);
+  const promedioDesalineacion = perfiles.length > 0 
+    ? (totalDesalineadas / totalPublicaciones * 100).toFixed(1) 
+    : '0.0';
+  
+  doc.setFontSize(12);
+  doc.setTextColor(51, 51, 51);
+  doc.text('Resumen Ejecutivo:', 20, 72);
+  doc.setFontSize(10);
+  doc.setTextColor(68, 68, 68);
+  doc.text(`• Promedio de desalineación: ${promedioDesalineacion}%`, 25, 80);
+  doc.text(`• Total de publicaciones analizadas: ${totalPublicaciones.toLocaleString()}`, 25, 87);
+  doc.text(`• Publicaciones desalineadas: ${totalDesalineadas.toLocaleString()}`, 25, 94);
+  
+  // Crear tabla manualmente (sin autoTable)
+  let currentY = 110;
+  
+  // Header de la tabla
+  doc.setFillColor(71, 85, 105); // Gris azulado
+  doc.rect(20, currentY, 170, 10, 'F'); // Fondo del header
+  
+  doc.setFontSize(9);
+  doc.setTextColor(255, 255, 255); // Texto blanco
+  doc.setFont('helvetica', 'bold');
+  doc.text('#', 25, currentY + 7);
+  doc.text('Perfil', 40, currentY + 7);
+  doc.text('% Desalineación', 110, currentY + 7);
+  doc.text('Total', 140, currentY + 7);
+  doc.text('Desalineadas', 160, currentY + 7);
+  
+  currentY += 10;
+  
+  // Filas de datos
+  doc.setFont('helvetica', 'normal');
+  doc.setTextColor(51, 51, 51);
+  
+  perfiles.slice(0, 25).forEach((perfil, index) => { // Limitar a 25 perfiles para que quepa en una página
+    // Alternar color de fondo
+    if (index % 2 === 0) {
+      doc.setFillColor(248, 250, 252);
+      doc.rect(20, currentY, 170, 8, 'F');
+    }
+    
+    // Datos de la fila
+    doc.text((index + 1).toString(), 25, currentY + 6);
+    
+    // Truncar nombre del perfil si es muy largo
+    const perfilName = perfil.perfil.length > 25 
+      ? perfil.perfil.substring(0, 22) + '...' 
+      : perfil.perfil;
+    doc.text(perfilName, 40, currentY + 6);
+    
+    // Porcentaje con color según valor
+    const porcentaje = `${perfil.porcentajeSinCategoria.toFixed(1)}%`;
+    if (perfil.porcentajeSinCategoria > 50) {
+      doc.setTextColor(220, 38, 127); // Rojo para alto
+    } else if (perfil.porcentajeSinCategoria > 25) {
+      doc.setTextColor(245, 158, 11); // Amarillo para medio
+    } else {
+      doc.setTextColor(34, 197, 94); // Verde para bajo
+    }
+    doc.text(porcentaje, 115, currentY + 6);
+    
+    // Volver a color normal para el resto
+    doc.setTextColor(51, 51, 51);
+    doc.text(perfil.totalHistorico.toString(), 142, currentY + 6);
+    doc.text(perfil.publicacionesSinCategoria.toString(), 165, currentY + 6);
+    
+    currentY += 8;
+  });
+  
+  // Borde de la tabla
+  doc.setDrawColor(200, 200, 200);
+  doc.rect(20, 110, 170, currentY - 110);
+  
+  // Si hay más de 25 perfiles, indicarlo
+  if (perfiles.length > 25) {
+    currentY += 10;
+    doc.setFontSize(8);
+    doc.setTextColor(102, 102, 102);
+    doc.text(`* Mostrando los primeros 25 perfiles de ${perfiles.length} total`, 20, currentY);
+    currentY += 10;
+  }
+  
+  // Footer con notas
+  currentY += 15;
+  
+  doc.setFontSize(8);
+  doc.setTextColor(102, 102, 102);
+  doc.text('Notas:', 20, currentY);
+  doc.text('• Desalineación: Publicaciones que no están categorizadas como "Transparencia Pública", "Seguridad" o "Invertir para Crecer"', 20, currentY + 7);
+  doc.text('• Los datos se basan en el análisis histórico completo de publicaciones por perfil', 20, currentY + 14);
+  doc.text('• Este reporte es generado automáticamente desde el sistema de análisis de contenido', 20, currentY + 21);
+  
+  // Generar nombre del archivo
+  const fechaArchivo = new Date().toISOString().split('T')[0];
+  const nombreArchivo = `reporte-desalineacion-${red.toLowerCase()}-${fechaArchivo}.pdf`;
+  
+  // Descargar el PDF
+  doc.save(nombreArchivo);
+};
 
 export default function SinCategoriaPage() {
   // Estados para filtros (igual que el home)
@@ -565,14 +711,39 @@ export default function SinCategoriaPage() {
         <section className="table-section">
           <div className="table-container">
             <div className="table-header">
-              <h2 className="table-title">📊 Análisis Histórico Completo por Perfil</h2>
-              <p className="table-subtitle">
-                <strong>Fórmula:</strong> % Sin Categoría = (Sin Categoría ÷ Total Histórico) × 100
-                <br />
-                <strong>Lógica:</strong> Usa la misma normalización de categorías que el mosaico del home
-                <br />
-                <strong>Datos:</strong> Todas las publicaciones históricas • Métricas solo de publicaciones sin categoría válida
-              </p>
+              <div className="table-header-content">
+                <div className="table-title-section">
+                  <h2 className="table-title">📊 Análisis Histórico Completo por Perfil</h2>
+                  <p className="table-subtitle">
+                    <strong>Fórmula:</strong> % Sin Categoría = (Sin Categoría ÷ Total Histórico) × 100
+                    <br />
+                    <strong>Lógica:</strong> Usa la misma normalización de categorías que el mosaico del home
+                    <br />
+                    <strong>Datos:</strong> Todas las publicaciones históricas • Métricas solo de publicaciones sin categoría válida
+                  </p>
+                </div>
+                
+                {/* Botón para generar PDF */}
+                {!dbLoading && !dbError && perfilesSinCategoria.length > 0 && (
+                  <div className="table-actions">
+                    <button
+                      onClick={() => generateExecutivePDF(
+                        perfilesSinCategoria, 
+                        red, 
+                        fechaInicio, 
+                        fechaFin,
+                        fechaMin,
+                        fechaMax
+                      )}
+                      className="btn-export-pdf"
+                      title="Descargar reporte ejecutivo en PDF"
+                    >
+                      <span className="export-icon">📄</span>
+                      <span className="export-text">Exportar PDF</span>
+                    </button>
+                  </div>
+                )}
+              </div>
             </div>
 
             {dbLoading && (

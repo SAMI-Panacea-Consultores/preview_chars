@@ -3624,6 +3624,85 @@ body {
   margin: 0;
 }
 
+/* Table Header with Export Button */
+.table-header-content {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 24px;
+  flex-wrap: wrap;
+}
+
+.table-title-section {
+  flex: 1;
+  min-width: 300px;
+}
+
+/* Table Actions - Export Button */
+.table-actions {
+  display: flex;
+  align-items: flex-start;
+  gap: 12px;
+}
+
+.btn-export-pdf {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 14px 20px;
+  background: linear-gradient(135deg, var(--system-red) 0%, #e60023 100%);
+  color: white;
+  border: none;
+  border-radius: 12px;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  font-family: 'SF Pro Display', -apple-system, BlinkMacSystemFont, sans-serif;
+  font-weight: 600;
+  font-size: 14px;
+  box-shadow: 0 4px 12px rgba(255, 45, 85, 0.3);
+  white-space: nowrap;
+}
+
+.btn-export-pdf:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 6px 20px rgba(255, 45, 85, 0.4);
+  background: linear-gradient(135deg, #e60023 0%, #cc001f 100%);
+}
+
+.btn-export-pdf:active {
+  transform: translateY(0);
+  box-shadow: 0 2px 8px rgba(255, 45, 85, 0.3);
+}
+
+.export-icon {
+  font-size: 16px;
+}
+
+.export-text {
+  font-weight: 600;
+}
+
+/* Responsive adjustments for table header */
+@media (max-width: 768px) {
+  .table-header-content {
+    flex-direction: column;
+    align-items: stretch;
+  }
+  
+  .table-title-section {
+    min-width: auto;
+  }
+  
+  .table-actions {
+    justify-content: center;
+  }
+  
+  .btn-export-pdf {
+    width: 100%;
+    justify-content: center;
+  }
+}
+
 /* Estados de carga y error */
 .loading-state,
 .error-state,
