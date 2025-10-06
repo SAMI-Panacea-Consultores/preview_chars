@@ -4,7 +4,6 @@ import { useEffect, useMemo, useRef, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import Papa from 'papaparse';
 import { PieChart, Pie, Cell, ResponsiveContainer, Legend, Tooltip } from 'recharts';
-import CSVUploader from '@/components/CSVUploader';
 import CSVStatusBanner, { CSVStatusData } from '@/components/CSVStatusBanner';
 import { usePublicaciones } from '@/hooks/usePublicaciones';
 
@@ -884,30 +883,6 @@ export default function Page() {
               <a href="/sin-categoria" className="nav-link">⚠️ Sin Categoría</a>
               <a href="/csv-sessions" className="nav-link">📁 Historial CSV</a>
               <a href="/api-docs" className="nav-link">📖 API Docs</a>
-            </div>
-            
-            {/* CSVUploader compacto */}
-            <div className="csv-uploader-compact">
-              <CSVUploader
-                compact={true}
-                onUploadSuccess={async (result) => {
-                  console.log('Upload success:', result);
-                  // Invalidar caché para forzar recarga de datos frescos
-                  invalidateCache();
-                  refetchData();
-                  // Recargar también todos los datos para las gráficas
-                  const allData = await fetchAllData();
-                  setAllRowsForCharts(allData);
-                  // El banner ya muestra el éxito, no necesitamos alert
-                }}
-                onUploadError={(error) => {
-                  console.error('Upload error:', error);
-                  // El banner ya muestra el error, no necesitamos alert
-                }}
-                onStatusChange={(status) => {
-                  setCsvStatus(status);
-                }}
-              />
             </div>
             
             {/* Botón comparar */}

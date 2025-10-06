@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useMemo } from 'react';
 import Link from 'next/link';
+import CSVUploader from '@/components/CSVUploader';
 
 interface CsvSession {
   id: string;
@@ -189,36 +190,40 @@ export default function CsvSessionsPage() {
       </div>
 
       {/* Stats Summary */}
-      <div className="stats-summary-section">
-        <div className="stats-grid">
-          <div className="stat-card">
-            <div className="stat-icon">📊</div>
-            <div className="stat-content">
-              <div className="stat-value">{stats.totalSessions.toLocaleString()}</div>
-              <div className="stat-label">Total Sesiones</div>
-            </div>
+      <div className="stats-overview">
+        <div className="stats-grid-clean">
+          <div className="stat-card-clean">
+            <div className="stat-number">{stats.totalSessions.toLocaleString()}</div>
+            <div className="stat-label-clean">Total Sesiones</div>
           </div>
-          <div className="stat-card success">
-            <div className="stat-icon">✅</div>
-            <div className="stat-content">
-              <div className="stat-value">{stats.completedSessions.toLocaleString()}</div>
-              <div className="stat-label">Completadas</div>
-            </div>
+          <div className="stat-card-clean success">
+            <div className="stat-number">{stats.completedSessions.toLocaleString()}</div>
+            <div className="stat-label-clean">Completadas</div>
           </div>
-          <div className="stat-card warning">
-            <div className="stat-icon">❌</div>
-            <div className="stat-content">
-              <div className="stat-value">{stats.failedSessions.toLocaleString()}</div>
-              <div className="stat-label">Fallidas</div>
-            </div>
+          <div className="stat-card-clean error">
+            <div className="stat-number">{stats.failedSessions.toLocaleString()}</div>
+            <div className="stat-label-clean">Fallidas</div>
           </div>
-          <div className="stat-card info">
-            <div className="stat-icon">📈</div>
-            <div className="stat-content">
-              <div className="stat-value">{stats.totalRecordsProcessed.toLocaleString()}</div>
-              <div className="stat-label">Registros Procesados</div>
-            </div>
+          <div className="stat-card-clean info">
+            <div className="stat-number">{stats.totalRecordsProcessed.toLocaleString()}</div>
+            <div className="stat-label-clean">Registros Procesados</div>
           </div>
+        </div>
+      </div>
+
+      {/* CSV Upload Section */}
+      <div className="upload-section">
+        <div className="upload-header">
+          <h3>📤 Subir Nuevo Archivo CSV</h3>
+          <p>Sube un nuevo archivo CSV para procesar y agregar al historial de sesiones</p>
+        </div>
+        <div className="upload-container">
+          <CSVUploader 
+            onUploadComplete={() => {
+              // Refrescar la lista de sesiones después de una carga exitosa
+              fetchSessions(1);
+            }}
+          />
         </div>
       </div>
 
