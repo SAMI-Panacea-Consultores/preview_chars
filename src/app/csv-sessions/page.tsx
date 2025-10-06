@@ -246,7 +246,7 @@ export default function CsvSessionsPage() {
           </button>
         </div>
         
-        <div className="filters-grid">
+            <div className="csv-filters-grid">
           <div className="filter-group">
             <label>Estado</label>
             <select 

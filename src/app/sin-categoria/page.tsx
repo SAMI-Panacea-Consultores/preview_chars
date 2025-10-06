@@ -23,7 +23,7 @@ export default function SinCategoriaPage() {
   // Estados para filtros (igual que el home)
   const [red, setRed] = useState('Instagram');
   const [tiposPublicacionSeleccionados, setTiposPublicacionSeleccionados] = useState<string[]>([
-    'Publicar', 'Historia', 'Reel', 'Video', 'Foto', 'Carrusel', 'Evento', 'Encuesta'
+    'Publicar', 'Reel', 'Video', 'Foto', 'Carrusel', 'Evento', 'Encuesta'
   ]);
 
   // Estados para filtros de fecha
@@ -364,7 +364,7 @@ export default function SinCategoriaPage() {
 
             {/* Contenido colapsable del panel */}
             <div className={`filters-content ${filtersExpanded ? 'expanded' : 'collapsed'}`}>
-              <div className="filters-grid">
+                  <div className="csv-filters-grid">
 
                 {/* Sección: Rango de Fechas */}
                 <div className="filter-section">

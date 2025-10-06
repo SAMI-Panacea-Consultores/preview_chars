@@ -2891,12 +2891,32 @@ body {
   transition: all 0.3s ease;
 }
 
-/* Grid de filtros */
+/* Grid de filtros - Home page */
 .filters-grid {
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));
   gap: 24px;
   margin-bottom: 32px;
+}
+
+/* Responsive adjustments for filters grid */
+@media (max-width: 768px) {
+  .filters-grid {
+    grid-template-columns: 1fr;
+    gap: 16px;
+  }
+}
+
+@media (min-width: 769px) and (max-width: 1024px) {
+  .filters-grid {
+    grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+  }
+}
+
+@media (min-width: 1025px) {
+  .filters-grid {
+    grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));
+  }
 }
 
 /* Sección individual de filtro */
@@ -3939,7 +3959,7 @@ body {
   transform: none;
 }
 
-.filters-grid {
+.csv-filters-grid {
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
   gap: 12px;
