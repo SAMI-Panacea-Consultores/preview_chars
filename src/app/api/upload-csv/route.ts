@@ -295,6 +295,8 @@ async function handlePOST(request: NextRequest) {
     };
 
     const { overwrite } = UploadCSVSchema.parse(formParams);
+    
+    console.log(`🔧 Upload parameters: overwrite=${overwrite}, fileName=${file.name}`);
 
     // Crear sesión de carga CSV
     csvSession = await prisma.csvSession.create({
@@ -382,10 +384,14 @@ async function handlePOST(request: NextRequest) {
     // Verificar duplicados si no se quiere sobrescribir
     const existingIds = new Set();
     if (!overwrite) {
+      console.log('🔍 Checking for existing IDs (overwrite=false)...');
       const existingPublicaciones = await prisma.publicacion.findMany({
         select: { id: true }
       });
       existingPublicaciones.forEach(p => existingIds.add(p.id));
+      console.log(`📊 Found ${existingIds.size} existing IDs in database`);
+    } else {
+      console.log('⚠️ Skipping duplicate check (overwrite=true)');
     }
 
     // Procesar datos con validaciones
@@ -506,7 +512,22 @@ async function handlePOST(request: NextRequest) {
 
     // Si hay duplicados y no se quiere sobrescribir, devolver para confirmación
     if (duplicateIds.length > 0 && !overwrite) {
+      console.log(`🔍 Found ${duplicateIds.length} duplicates, returning for confirmation`);
       logRequest(request, { statusCode: 409 } as any, startTime);
+      
+      // Actualizar sesión con información de duplicados
+      await prisma.csvSession.update({
+        where: { id: csvSession.id },
+        data: {
+          status: 'partial',
+          processedRows: publicacionesToInsert.length,
+          duplicateRows: duplicateIds.length,
+          totalRows: data.length,
+          completedAt: new Date(),
+          processingTime: Date.now() - startTime,
+          errorMessage: `${duplicateIds.length} duplicados encontrados - requiere confirmación`
+        }
+      });
       
       return NextResponse.json({
         success: false,
@@ -514,7 +535,8 @@ async function handlePOST(request: NextRequest) {
         totalRows: data.length,
         duplicateCount: duplicateIds.length,
         newRows: publicacionesToInsert.length,
-        message: `${duplicateIds.length} publicaciones duplicadas encontradas`
+        message: `${duplicateIds.length} publicaciones duplicadas encontradas`,
+        sessionId: csvSession.id
       }, { status: 409 });
     }
 

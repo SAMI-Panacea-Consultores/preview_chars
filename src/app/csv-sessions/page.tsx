@@ -208,6 +208,12 @@ export default function CsvSessionsPage() {
             <div className="stat-number">{stats.totalRecordsProcessed.toLocaleString()}</div>
             <div className="stat-label-clean">Registros Procesados</div>
           </div>
+          <div className="stat-card-clean warning">
+            <div className="stat-number">
+              {sessions.reduce((total, session) => total + (session.duplicateRows || 0), 0).toLocaleString()}
+            </div>
+            <div className="stat-label-clean">Duplicados (No Subidos)</div>
+          </div>
         </div>
       </div>
 
@@ -219,7 +225,7 @@ export default function CsvSessionsPage() {
         </div>
         <div className="upload-container">
           <CSVUploader 
-            onUploadComplete={() => {
+            onUploadSuccess={() => {
               // Refrescar la lista de sesiones después de una carga exitosa
               fetchSessions(1);
             }}
@@ -350,6 +356,11 @@ export default function CsvSessionsPage() {
                           <div className="processed-records">
                             {session.processedRows.toLocaleString()} procesados
                           </div>
+                          {session.duplicateRows > 0 && (
+                            <div className="duplicate-records">
+                              {session.duplicateRows.toLocaleString()} duplicados (no subidos)
+                            </div>
+                          )}
                         </div>
                       </td>
                       <td>

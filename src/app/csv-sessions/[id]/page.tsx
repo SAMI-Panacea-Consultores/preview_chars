@@ -243,7 +243,7 @@ export default function CsvSessionDetailPage() {
                 </div>
                 <div className="stat-item neutral">
                   <div className="stat-value">{session.duplicateRows.toLocaleString()}</div>
-                  <div className="stat-label">Duplicados</div>
+                  <div className="stat-label">Duplicados (No Subidos)</div>
                 </div>
                 <div className="stat-item excluded">
                   <div className="stat-value">{session.excludedHistorias.toLocaleString()}</div>
@@ -273,7 +273,7 @@ export default function CsvSessionDetailPage() {
           </div>
           <div className="rate-card neutral">
             <div className="rate-value">{session.duplicateRate}%</div>
-            <div className="rate-label">Tasa de Duplicados</div>
+            <div className="rate-label">Tasa de Duplicados (No Subidos)</div>
           </div>
           <div className="rate-card excluded">
             <div className="rate-value">{session.excludedRate}%</div>

@@ -4086,6 +4086,12 @@ body {
   color: var(--text-secondary);
 }
 
+.duplicate-records {
+  font-size: 0.75rem;
+  color: var(--system-orange);
+  font-weight: 500;
+}
+
 /* Success/Error Info */
 .success-error-info {
   display: flex;
@@ -4208,7 +4214,7 @@ body {
 
 .stats-grid-clean {
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+  grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
   gap: 16px;
 }
 
@@ -4239,6 +4245,10 @@ body {
   border-left: 4px solid var(--system-blue);
 }
 
+.stat-card-clean.warning {
+  border-left: 4px solid var(--system-orange);
+}
+
 .stat-number {
   font-size: 2rem;
   font-weight: 700;
@@ -4257,6 +4267,10 @@ body {
 
 .stat-card-clean.info .stat-number {
   color: var(--system-blue);
+}
+
+.stat-card-clean.warning .stat-number {
+  color: var(--system-orange);
 }
 
 .stat-label-clean {
