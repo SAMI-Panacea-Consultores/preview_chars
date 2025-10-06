@@ -604,10 +604,10 @@ export default function SinCategoriaPage() {
                     <tr>
                       <th className="table-header-cell rank-column">#</th>
                       <th className="table-header-cell profile-column">Perfil</th>
+                      <th className="table-header-cell metric-column">%Desalineación</th>
+                      <th className="table-header-cell metric-column">Publicaciones</th>
                       <th className="table-header-cell metric-column">Sin Categoría</th>
                       <th className="table-header-cell metric-column">Categorizadas</th>
-                      <th className="table-header-cell metric-column">Total Histórico</th>
-                      <th className="table-header-cell metric-column">% Sin Categoría</th>
                       <th className="table-header-cell metric-column">Impresiones</th>
                       <th className="table-header-cell metric-column">Alcance</th>
                       <th className="table-header-cell metric-column">Me Gusta</th>
@@ -628,19 +628,19 @@ export default function SinCategoriaPage() {
                             <div className="profile-network">{perfil.red}</div>
                           </div>
                         </td>
+                        <td className="table-cell metric-cell">
+                          <span className={`percentage-badge ${perfil.porcentajeSinCategoria > 50 ? 'high' : perfil.porcentajeSinCategoria > 25 ? 'medium' : 'low'}`}>
+                            {perfil.porcentajeSinCategoria.toFixed(1)}%
+                          </span>
+                        </td>
+                        <td className="table-cell metric-cell">
+                          <span className="metric-value">{perfil.totalHistorico}</span>
+                        </td>
                         <td className="table-cell metric-cell highlight-cell">
                           <span className="metric-value warning">{perfil.publicacionesSinCategoria}</span>
                         </td>
                         <td className="table-cell metric-cell">
                           <span className="metric-value success">{perfil.totalCategorizadas}</span>
-                        </td>
-                        <td className="table-cell metric-cell">
-                          <span className="metric-value">{perfil.totalHistorico}</span>
-                        </td>
-                        <td className="table-cell metric-cell">
-                          <span className={`percentage-badge ${perfil.porcentajeSinCategoria > 50 ? 'high' : perfil.porcentajeSinCategoria > 25 ? 'medium' : 'low'}`}>
-                            {perfil.porcentajeSinCategoria.toFixed(1)}%
-                          </span>
                         </td>
                         <td className="table-cell metric-cell">
                           <span className="metric-value">{perfil.impresiones.toLocaleString()}</span>
