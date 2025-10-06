@@ -29,7 +29,8 @@ const generateExecutivePDF = (
   fechaMin: string,
   fechaMax: string
 ) => {
-  const doc = new jsPDF();
+  // Crear documento en orientación horizontal para más espacio
+  const doc = new jsPDF('landscape', 'mm', 'a4');
   
   // Configurar fuente
   doc.setFont('helvetica');
@@ -77,43 +78,79 @@ const generateExecutivePDF = (
   doc.text(`• Total de publicaciones analizadas: ${totalPublicaciones.toLocaleString()}`, 25, 87);
   doc.text(`• Publicaciones desalineadas: ${totalDesalineadas.toLocaleString()}`, 25, 94);
   
-  // Crear tabla manualmente (sin autoTable)
-  let currentY = 110;
+  // Configuración para múltiples páginas
+  const pageHeight = doc.internal.pageSize.height;
+  const pageWidth = doc.internal.pageSize.width;
+  const marginTop = 110;
+  const marginBottom = 30;
+  const rowHeight = 8;
+  const headerHeight = 10;
+  const maxRowsPerPage = Math.floor((pageHeight - marginTop - marginBottom) / rowHeight);
   
-  // Header de la tabla
-  doc.setFillColor(71, 85, 105); // Gris azulado
-  doc.rect(20, currentY, 170, 10, 'F'); // Fondo del header
+  let currentY = marginTop;
+  let currentPage = 1;
+  let rowsInCurrentPage = 0;
   
-  doc.setFontSize(9);
-  doc.setTextColor(255, 255, 255); // Texto blanco
-  doc.setFont('helvetica', 'bold');
-  doc.text('#', 25, currentY + 7);
-  doc.text('Perfil', 40, currentY + 7);
-  doc.text('% Desalineación', 110, currentY + 7);
-  doc.text('Total', 140, currentY + 7);
-  doc.text('Desalineadas', 160, currentY + 7);
+  // Función para crear header de tabla
+  const createTableHeader = (y: number) => {
+    // Header de la tabla (más ancho en horizontal)
+    doc.setFillColor(71, 85, 105);
+    doc.rect(20, y, pageWidth - 40, headerHeight, 'F');
+    
+    doc.setFontSize(9);
+    doc.setTextColor(255, 255, 255);
+    doc.setFont('helvetica', 'bold');
+    doc.text('#', 25, y + 7);
+    doc.text('Perfil', 50, y + 7);
+    doc.text('% Desalineación', 140, y + 7);
+    doc.text('Total Pub.', 180, y + 7);
+    doc.text('Desalineadas', 210, y + 7);
+    doc.text('Me Gusta', 240, y + 7);
+    
+    return y + headerHeight;
+  };
   
-  currentY += 10;
+  // Crear primer header
+  currentY = createTableHeader(currentY);
   
-  // Filas de datos
+  // Procesar TODOS los perfiles (no limitar a 25)
   doc.setFont('helvetica', 'normal');
   doc.setTextColor(51, 51, 51);
   
-  perfiles.slice(0, 25).forEach((perfil, index) => { // Limitar a 25 perfiles para que quepa en una página
+  perfiles.forEach((perfil, index) => {
+    // Verificar si necesitamos una nueva página
+    if (rowsInCurrentPage >= maxRowsPerPage) {
+      // Crear nueva página
+      doc.addPage('landscape');
+      currentPage++;
+      currentY = 30; // Margen superior para páginas adicionales
+      
+      // Añadir header de página
+      doc.setFontSize(14);
+      doc.setTextColor(51, 51, 51);
+      doc.text(`Reporte de Desalineación - Página ${currentPage}`, 20, currentY);
+      currentY += 20;
+      
+      // Crear header de tabla en nueva página
+      currentY = createTableHeader(currentY);
+      rowsInCurrentPage = 0;
+    }
+    
     // Alternar color de fondo
     if (index % 2 === 0) {
       doc.setFillColor(248, 250, 252);
-      doc.rect(20, currentY, 170, 8, 'F');
+      doc.rect(20, currentY, pageWidth - 40, rowHeight, 'F');
     }
     
     // Datos de la fila
+    doc.setTextColor(51, 51, 51);
     doc.text((index + 1).toString(), 25, currentY + 6);
     
-    // Truncar nombre del perfil si es muy largo
-    const perfilName = perfil.perfil.length > 25 
-      ? perfil.perfil.substring(0, 22) + '...' 
+    // Nombre del perfil (más espacio en horizontal)
+    const perfilName = perfil.perfil.length > 35 
+      ? perfil.perfil.substring(0, 32) + '...' 
       : perfil.perfil;
-    doc.text(perfilName, 40, currentY + 6);
+    doc.text(perfilName, 50, currentY + 6);
     
     // Porcentaje con color según valor
     const porcentaje = `${perfil.porcentajeSinCategoria.toFixed(1)}%`;
@@ -124,42 +161,43 @@ const generateExecutivePDF = (
     } else {
       doc.setTextColor(34, 197, 94); // Verde para bajo
     }
-    doc.text(porcentaje, 115, currentY + 6);
+    doc.text(porcentaje, 145, currentY + 6);
     
     // Volver a color normal para el resto
     doc.setTextColor(51, 51, 51);
-    doc.text(perfil.totalHistorico.toString(), 142, currentY + 6);
-    doc.text(perfil.publicacionesSinCategoria.toString(), 165, currentY + 6);
+    doc.text(perfil.totalHistorico.toString(), 185, currentY + 6);
+    doc.text(perfil.publicacionesSinCategoria.toString(), 215, currentY + 6);
+    doc.text(perfil.meGusta.toLocaleString(), 245, currentY + 6);
     
-    currentY += 8;
+    currentY += rowHeight;
+    rowsInCurrentPage++;
   });
   
-  // Borde de la tabla
-  doc.setDrawColor(200, 200, 200);
-  doc.rect(20, 110, 170, currentY - 110);
-  
-  // Si hay más de 25 perfiles, indicarlo
-  if (perfiles.length > 25) {
-    currentY += 10;
-    doc.setFontSize(8);
-    doc.setTextColor(102, 102, 102);
-    doc.text(`* Mostrando los primeros 25 perfiles de ${perfiles.length} total`, 20, currentY);
-    currentY += 10;
+  // Ir a la última página para añadir footer
+  if (currentPage > 1) {
+    // Ya estamos en la última página
   }
   
-  // Footer con notas
+  // Footer con notas (ajustar posición)
   currentY += 15;
+  
+  // Si no hay espacio suficiente para el footer, crear nueva página
+  if (currentY > pageHeight - 50) {
+    doc.addPage('landscape');
+    currentY = 30;
+  }
   
   doc.setFontSize(8);
   doc.setTextColor(102, 102, 102);
   doc.text('Notas:', 20, currentY);
   doc.text('• Desalineación: Publicaciones que no están categorizadas como "Transparencia Pública", "Seguridad" o "Invertir para Crecer"', 20, currentY + 7);
   doc.text('• Los datos se basan en el análisis histórico completo de publicaciones por perfil', 20, currentY + 14);
-  doc.text('• Este reporte es generado automáticamente desde el sistema de análisis de contenido', 20, currentY + 21);
+  doc.text('• Este reporte incluye métricas totales de engagement independientemente de la categorización', 20, currentY + 21);
+  doc.text(`• Reporte completo: ${perfiles.length} perfiles analizados en ${currentPage} página(s)`, 20, currentY + 28);
   
   // Generar nombre del archivo
   const fechaArchivo = new Date().toISOString().split('T')[0];
-  const nombreArchivo = `reporte-desalineacion-${red.toLowerCase()}-${fechaArchivo}.pdf`;
+  const nombreArchivo = `reporte-desalineacion-completo-${red.toLowerCase()}-${fechaArchivo}.pdf`;
   
   // Descargar el PDF
   doc.save(nombreArchivo);
