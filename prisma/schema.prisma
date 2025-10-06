@@ -18,6 +18,7 @@ model Publicacion {
   perfil          String   // Nombre del perfil
   categoria       String   // Categoría de la publicación
   tipoPublicacion String   @default("Publicar") @map("tipo_publicacion") // Tipo de publicación (Historia, Publicar, etc.)
+  publicar        String?  @map("publicar") // Contenido de la columna "Publicar" del CSV
   impresiones     Int      @default(0)
   alcance         Int      @default(0)
   meGusta         Int      @default(0) @map("me_gusta")

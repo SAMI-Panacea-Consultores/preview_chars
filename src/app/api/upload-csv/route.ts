@@ -121,6 +121,7 @@ function parseCSVDate(fechaStr: string): Date {
  *       - categoria: Categoría de la publicación (puede tener múltiples separadas por comas)
  *                   Si la columna no existe en el CSV, se asigna automáticamente "Pendiente"
  *                   Si la columna existe pero está vacía, se asigna "Sin categoría"
+ *       - Publicar: Contenido de la publicación (texto, enlaces, etc.)
  *       - Impresiones: Número de impresiones (puede tener comas como separadores de miles)
  *       - Alcance: Número de personas alcanzadas
  *       - Me gusta: Número de me gusta
@@ -355,7 +356,8 @@ async function handlePOST(request: NextRequest) {
           redKey: headers.find(h => h.toLowerCase() === 'red') || 'Red',
           perfilKey: headers.find(h => h.toLowerCase().includes('perfil')) || 'Perfil',
           categoriaKey: headers.find(h => h.toLowerCase().includes('categoria')) || 'categoria',
-          tipoPublicacionKey: headers.find(h => h.toLowerCase().includes('tipo') && h.toLowerCase().includes('publicaci')) || 'Tipo de publicación'
+          tipoPublicacionKey: headers.find(h => h.toLowerCase().includes('tipo') && h.toLowerCase().includes('publicaci')) || 'Tipo de publicación',
+          publicarKey: headers.find(h => h.toLowerCase() === 'publicar') || 'Publicar'
         })
       }
     });
@@ -383,6 +385,7 @@ async function handlePOST(request: NextRequest) {
     const perfilKey = headers.find(h => h.toLowerCase().includes('perfil')) || 'Perfil';
     const categoriaKey = headers.find(h => h.toLowerCase().includes('categoria')) || 'categoria';
     const tipoPublicacionKey = headers.find(h => h.toLowerCase().includes('tipo') && h.toLowerCase().includes('publicaci')) || 'Tipo de publicación';
+    const publicarKey = headers.find(h => h.toLowerCase() === 'publicar') || 'Publicar';
 
     // Verificar duplicados si no se quiere sobrescribir
     const existingIds = new Set();
@@ -468,6 +471,9 @@ async function handlePOST(request: NextRequest) {
       // Obtener tipo de publicación
       const tipoPublicacion = (row[tipoPublicacionKey] || 'Publicar').toString().trim();
 
+      // Obtener contenido de la columna "Publicar"
+      const publicar = (row[publicarKey] || '').toString().trim();
+
       // FILTRO: Excluir publicaciones de tipo "Historia"
       if (tipoPublicacion.toLowerCase().includes('historia')) {
         // Registrar la historia excluida para estadísticas
@@ -503,6 +509,7 @@ async function handlePOST(request: NextRequest) {
           perfil,
           categoria,
           tipoPublicacion,
+          publicar: publicar || null, // Guardar contenido de la columna "Publicar"
           impresiones: impresionesPerCategory,
           alcance: alcancePerCategory,
           meGusta: meGustaPerCategory,

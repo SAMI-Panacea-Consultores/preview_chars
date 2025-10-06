@@ -5,6 +5,24 @@ Todas las mejoras y cambios importantes del componente CSV Sessions se documenta
 El formato se basa en [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 y este proyecto adhiere a [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.1.0] - 2025-10-06
+
+### 🆕 Nuevas Funcionalidades
+- **Nueva Columna "Publicar"**: Añadida columna `publicar` al esquema de base de datos para guardar el contenido de la columna "Publicar" de los CSVs
+- **Detección Automática**: El sistema ahora detecta automáticamente la columna "Publicar" en los CSVs subidos
+- **Migración de Base de Datos**: Aplicada migración para añadir la nueva columna sin afectar datos existentes
+
+### 🔧 Mejoras Técnicas
+- Actualizado el procesamiento CSV para incluir la nueva columna en `publicacionesToInsert`
+- Mejorada la documentación del API para reflejar el nuevo campo "Publicar"
+- Añadida validación y manejo de la columna "Publicar" en el endpoint `/api/upload-csv`
+- Actualizado el mapeo de columnas detectadas para incluir `publicarKey`
+
+### 📋 Cambios en el Esquema
+```sql
+ALTER TABLE publicaciones ADD COLUMN publicar TEXT;
+```
+
 ## [1.0.0] - 2025-10-06
 
 ### 🎉 Lanzamiento Inicial
