@@ -368,6 +368,14 @@ export default function SinCategoriaPage() {
       // IMPORTANTE: Contar UNA SOLA VEZ por publicación (item)
       perfilData.totalHistorico++;
       
+      // SIEMPRE sumar las métricas de TODAS las publicaciones (independientemente de categoría)
+      perfilData.impresiones += Number(item.Impresiones) || 0;
+      perfilData.alcance += Number(item.Alcance) || 0;
+      perfilData.meGusta += Number(item['Me gusta']) || 0;
+      perfilData.comentarios += Number(item.Comentarios) || 0;
+      perfilData.compartidos += Number(item.Compartidos) || 0;
+      perfilData.guardados += Number(item.Guardados) || 0;
+      
       // Verificar si TODA la publicación es sin categoría
       let publicacionEsSinCategoria = false;
       let publicacionEsConCategoria = false;
@@ -385,13 +393,6 @@ export default function SinCategoriaPage() {
       // Si la publicación tiene SOLO categorías sin categoría válida
       if (publicacionEsSinCategoria && !publicacionEsConCategoria) {
         perfilData.publicacionesSinCategoria++;
-        // Sumar métricas completas de esta publicación
-        perfilData.impresiones += Number(item.Impresiones) || 0;
-        perfilData.alcance += Number(item.Alcance) || 0;
-        perfilData.meGusta += Number(item['Me gusta']) || 0;
-        perfilData.comentarios += Number(item.Comentarios) || 0;
-        perfilData.compartidos += Number(item.Compartidos) || 0;
-        perfilData.guardados += Number(item.Guardados) || 0;
       } else if (publicacionEsConCategoria) {
         perfilData.totalCategorizadas++;
       }

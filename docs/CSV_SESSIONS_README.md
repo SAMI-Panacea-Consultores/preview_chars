@@ -20,6 +20,23 @@ Sistema completo para gestionar, monitorear y auditar cargas de archivos CSV con
 - **Detección de duplicados** con confirmación
 - **Exclusión automática** de publicaciones tipo "Historia"
 
+### 🤖 Categorización Automática con GPT-5
+- **Procesamiento Inteligente**: Categoriza registros "Pendiente" usando GPT-5
+- **Prompt Gubernamental**: Análisis especializado para contenido de Cali
+- **Categorías Detectadas**:
+  - 🔒 **SEGURIDAD**: Seguridad ciudadana, prevención del delito
+  - 📋 **TRANSPARENCIA PÚBLICA**: Rendición de cuentas, gestión pública
+  - 🏗️ **INVERTIR PARA CRECER**: Proyectos de infraestructura del alcalde Eder
+  - ❓ **N/A**: Contenido que no encaja en categorías principales
+- **Procesamiento en Lotes**: Configuración de velocidad y cantidad
+- **Estadísticas en Tiempo Real**: Progreso y resultados inmediatos
+
+### 🧹 Sistema de Limpieza de Datos
+- **Limpieza Inteligente**: Elimina registros pendientes sin contenido
+- **Seguridad**: Solo elimina registros que no pueden ser procesados
+- **Estadísticas Detalladas**: Reporte completo de limpieza
+- **Un Clic**: Operación simple desde la interfaz
+
 ### 🔍 Filtros y Búsqueda
 - Filtro por **estado** (completed, failed, processing, partial)
 - Búsqueda por **nombre de archivo**

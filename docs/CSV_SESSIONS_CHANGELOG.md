@@ -5,6 +5,47 @@ Todas las mejoras y cambios importantes del componente CSV Sessions se documenta
 El formato se basa en [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 y este proyecto adhiere a [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.2.0] - 2025-10-06
+
+### 🤖 Categorización Automática con GPT-5
+- **Nuevo API Endpoint**: `/api/categorize-pending` para procesamiento automático de registros pendientes
+- **Integración GPT-5**: Conexión con `gpt-5-chat-latest` usando endpoint `/v1/responses`
+- **Prompt Gubernamental**: Prompt especializado para análisis de contenido gubernamental de Cali
+- **Procesamiento en Lotes**: Configuración de `batchSize` y `delayMs` para optimizar requests
+- **Hook Frontend**: `useCategorizePending` para integración con la interfaz
+
+### 🧹 Sistema de Limpieza de Datos
+- **Nuevo API Endpoint**: `/api/cleanup-pending` para eliminar registros sin contenido
+- **Limpieza Inteligente**: Elimina solo registros con `categoria = 'Pendiente'` y `publicar IS NULL`
+- **Hook Frontend**: `useCleanupPending` para operaciones de limpieza desde la UI
+- **Estadísticas Detalladas**: Reporte completo de registros eliminados y conservados
+
+### 🎨 Mejoras de Interfaz
+- **Botón GPT-5**: "🤖 Procesar con GPT-5" en la tarjeta de Registros Pendientes
+- **Botón Limpieza**: "🗑️ Limpiar Sin Contenido" para registros no procesables
+- **Estados de Carga**: Spinners animados durante procesamiento y limpieza
+- **Resultados en Tiempo Real**: Estadísticas inmediatas de éxito/errores
+- **Diseño Moderno**: Gradientes, animaciones y efectos hover mejorados
+
+### 📊 Categorías Detectadas por GPT-5
+- **SEGURIDAD**: Seguridad ciudadana, prevención del delito, orden público
+- **TRANSPARENCIA PÚBLICA**: Rendición de cuentas, gestión pública, procesos administrativos
+- **INVERTIR PARA CRECER**: Proyectos de infraestructura y desarrollo del alcalde Alejandro Eder
+- **N/A**: Publicaciones que no encajan en las categorías principales
+
+### 🔧 Mejoras Técnicas
+- **Manejo de Errores**: Sistema robusto de error handling y logging
+- **Documentación Swagger**: APIs completamente documentadas
+- **Validación de Datos**: Schemas Zod para validación de requests
+- **Optimización de Performance**: Delays configurables para no saturar OpenAI API
+- **Estadísticas Avanzadas**: Métricas detalladas de procesamiento
+
+### 🧪 Testing y Validación
+- **Scripts de Prueba**: `test-gpt-categorization.js`, `test-api-categorize.js`, `test-cleanup-api.js`
+- **Verificación Completa**: Procesamiento exitoso de 773+ registros pendientes
+- **Limpieza Verificada**: Eliminación exitosa de 23 registros sin contenido
+- **Base de Datos Limpia**: 0 registros pendientes después del procesamiento completo
+
 ## [1.1.0] - 2025-10-06
 
 ### 🆕 Nuevas Funcionalidades
