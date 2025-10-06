@@ -22,6 +22,10 @@ model Publicacion {
   alcance         Int      @default(0)
   meGusta         Int      @default(0) @map("me_gusta")
   
+  // Relación con sesión de carga
+  csvSessionId    String?  @map("csv_session_id")
+  csvSession      CsvSession? @relation(fields: [csvSessionId], references: [id])
+  
   // Metadatos
   createdAt       DateTime @default(now()) @map("created_at")
   updatedAt       DateTime @updatedAt @map("updated_at")
@@ -32,5 +36,56 @@ model Publicacion {
   @@index([categoria])
   @@index([tipoPublicacion])
   @@index([fecha])
+  @@index([csvSessionId])
   @@map("publicaciones")
+}
+
+model CsvSession {
+  id              String   @id @default(cuid())
+  fileName        String   @map("file_name")
+  fileSize        Int      @map("file_size") // En bytes
+  status          String   // "processing", "completed", "failed", "partial"
+  
+  // Estadísticas de procesamiento
+  totalRows       Int      @default(0) @map("total_rows")
+  processedRows   Int      @default(0) @map("processed_rows")
+  insertedRows    Int      @default(0) @map("inserted_rows")
+  updatedRows     Int      @default(0) @map("updated_rows")
+  errorRows       Int      @default(0) @map("error_rows")
+  duplicateRows   Int      @default(0) @map("duplicate_rows")
+  excludedHistorias Int    @default(0) @map("excluded_historias")
+  
+  // Metadatos del archivo
+  originalHeaders String?  @map("original_headers") // JSON string con headers del CSV
+  detectedColumns String?  @map("detected_columns") // JSON string con mapeo de columnas
+  
+  // Estadísticas de contenido
+  categoriesFound String?  @map("categories_found") // JSON array
+  profilesFound   String?  @map("profiles_found")   // JSON array
+  networksFound   String?  @map("networks_found")   // JSON array
+  
+  // Información de errores
+  errorMessage    String?  @map("error_message")
+  errorDetails    String?  @map("error_details") // JSON string con detalles de errores
+  
+  // Configuración de carga
+  overwrite       Boolean  @default(false)
+  
+  // Tiempo de procesamiento
+  startedAt       DateTime @default(now()) @map("started_at")
+  completedAt     DateTime? @map("completed_at")
+  processingTime  Int?     @map("processing_time") // En milisegundos
+  
+  // Relaciones
+  publicaciones   Publicacion[]
+  
+  // Metadatos
+  createdAt       DateTime @default(now()) @map("created_at")
+  updatedAt       DateTime @updatedAt @map("updated_at")
+  
+  // Índices
+  @@index([status])
+  @@index([startedAt])
+  @@index([fileName])
+  @@map("csv_sessions")
 }

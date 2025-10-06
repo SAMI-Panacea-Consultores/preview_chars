@@ -252,6 +252,7 @@ function parseCSVDate(fechaStr: string): Date {
  */
 async function handlePOST(request: NextRequest) {
   const startTime = Date.now();
+  let csvSession: any = null;
   
   try {
     const formData = await request.formData();
@@ -295,6 +296,21 @@ async function handlePOST(request: NextRequest) {
 
     const { overwrite } = UploadCSVSchema.parse(formParams);
 
+    // Crear sesión de carga CSV
+    csvSession = await prisma.csvSession.create({
+      data: {
+        fileName: file.name,
+        fileSize: file.size,
+        status: 'processing',
+        overwrite: overwrite,
+        originalHeaders: '',
+        detectedColumns: '',
+        totalRows: 0
+      }
+    });
+
+    console.log(`📊 Created CSV session: ${csvSession.id} for file: ${file.name}`);
+
     // Leer y parsear CSV
     const text = await file.text();
     
@@ -321,6 +337,23 @@ async function handlePOST(request: NextRequest) {
 
     const data = parseResult.data as any[];
     const headers = parseResult.meta.fields || [];
+
+    // Actualizar sesión con información del CSV
+    await prisma.csvSession.update({
+      where: { id: csvSession.id },
+      data: {
+        totalRows: data.length,
+        originalHeaders: JSON.stringify(headers),
+        detectedColumns: JSON.stringify({
+          idKey: headers.find(h => h.toLowerCase().includes('id')) || 'ID',
+          fechaKey: headers.find(h => h.toLowerCase().includes('fecha')) || 'Fecha',
+          redKey: headers.find(h => h.toLowerCase() === 'red') || 'Red',
+          perfilKey: headers.find(h => h.toLowerCase().includes('perfil')) || 'Perfil',
+          categoriaKey: headers.find(h => h.toLowerCase().includes('categoria')) || 'categoria',
+          tipoPublicacionKey: headers.find(h => h.toLowerCase().includes('tipo') && h.toLowerCase().includes('publicaci')) || 'Tipo de publicación'
+        })
+      }
+    });
 
     // Validar estructura del CSV
     const structureValidation = validateCSVStructure(headers);
@@ -451,7 +484,8 @@ async function handlePOST(request: NextRequest) {
           tipoPublicacion,
           impresiones: impresionesPerCategory,
           alcance: alcancePerCategory,
-          meGusta: meGustaPerCategory
+          meGusta: meGustaPerCategory,
+          csvSessionId: csvSession.id // Asociar con la sesión
         });
       }
     }
@@ -527,8 +561,29 @@ async function handlePOST(request: NextRequest) {
 
     logRequest(request, { statusCode: 201 } as any, startTime);
 
+    // Actualizar sesión CSV con estadísticas finales
+    const processingTime = Date.now() - startTime;
+    await prisma.csvSession.update({
+      where: { id: csvSession.id },
+      data: {
+        status: 'completed',
+        processedRows: publicacionesToInsert.length,
+        insertedRows: result.inserted,
+        updatedRows: result.updated,
+        errorRows: result.errors,
+        duplicateRows: duplicateIds.length,
+        excludedHistorias: excludedHistorias.length,
+        categoriesFound: JSON.stringify([...new Set(publicacionesToInsert.map(p => p.categoria))]),
+        profilesFound: JSON.stringify([...new Set(publicacionesToInsert.map(p => p.perfil))]),
+        networksFound: JSON.stringify([...new Set(publicacionesToInsert.map(p => p.red))]),
+        completedAt: new Date(),
+        processingTime: processingTime
+      }
+    });
+
     return NextResponse.json({
       success: true,
+      sessionId: csvSession.id, // Incluir ID de sesión en respuesta
       inserted: result.inserted,
       updated: result.updated,
       errors: result.errors,
@@ -540,7 +595,7 @@ async function handlePOST(request: NextRequest) {
         : `${result.inserted} nuevas publicaciones insertadas. ${excludedHistorias.length} historias excluidas automáticamente.`,
       stats: {
         fileSize: `${(file.size / 1024).toFixed(2)} KB`,
-        processingTime: `${Date.now() - startTime}ms`,
+        processingTime: `${processingTime}ms`,
         categoriesFound: [...new Set(publicacionesToInsert.map(p => p.categoria))],
         profilesFound: [...new Set(publicacionesToInsert.map(p => p.perfil))],
         networksFound: [...new Set(publicacionesToInsert.map(p => p.red))],
@@ -553,6 +608,28 @@ async function handlePOST(request: NextRequest) {
 
   } catch (error) {
     console.error('Error uploading CSV:', error);
+    
+    // Actualizar sesión con error si existe
+    if (csvSession) {
+      try {
+        await prisma.csvSession.update({
+          where: { id: csvSession.id },
+          data: {
+            status: 'failed',
+            errorMessage: error instanceof Error ? error.message : 'Unknown error',
+            errorDetails: JSON.stringify({
+              name: error instanceof Error ? error.name : 'Unknown',
+              stack: error instanceof Error ? error.stack : null,
+              timestamp: new Date().toISOString()
+            }),
+            completedAt: new Date(),
+            processingTime: Date.now() - startTime
+          }
+        });
+      } catch (updateError) {
+        console.error('Error updating CSV session with error:', updateError);
+      }
+    }
     
     // Manejar errores de validación Zod
     if (error instanceof Error && error.name === 'ZodError') {
