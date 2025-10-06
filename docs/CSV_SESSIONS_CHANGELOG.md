@@ -1,0 +1,147 @@
+# 📁 CSV Sessions - Changelog
+
+Todas las mejoras y cambios importantes del componente CSV Sessions se documentan en este archivo.
+
+El formato se basa en [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
+y este proyecto adhiere a [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
+
+## [1.0.0] - 2025-10-06
+
+### 🎉 Lanzamiento Inicial
+- Sistema completo de gestión de cargas CSV
+- Dashboard con estadísticas en tiempo real
+- Filtros avanzados y paginación
+- Manejo inteligente de duplicados
+
+### ✨ Funcionalidades Principales Añadidas
+- **Dashboard de estadísticas**: 6 tarjetas con métricas clave
+- **Lista paginada de sesiones**: Con filtros por estado, nombre y fechas
+- **Páginas de detalle**: Información completa por sesión
+- **Integración de uploader**: CSVUploader embebido en la página principal
+- **Estados de sesión**: processing, completed, failed, partial
+
+### 🔧 Características Técnicas
+- **API REST completa**: `/api/csv-sessions` y `/api/csv-sessions/[id]`
+- **Base de datos optimizada**: Tabla `csv_sessions` con índices
+- **Diseño responsivo**: Mobile-first con CSS Grid
+- **Manejo de errores**: Estados y mensajes informativos
+
+### 📊 Sistema de Métricas
+- Total de sesiones procesadas
+- Sesiones completadas vs fallidas
+- Registros procesados globalmente
+- Duplicados detectados y no subidos
+- Tiempo de procesamiento por sesión
+
+## [1.1.0] - 2025-10-06
+
+### 🆕 Funcionalidad de Registros Pendientes
+- **Nueva tarjeta**: "Registros Pendientes" en dashboard
+- **Categorización inteligente**: Diferencia entre columna faltante vs vacía
+- **Lógica mejorada**: CSVs sin columna "categoría" → "Pendiente"
+
+### 🔧 Mejoras Técnicas
+- **API extendido**: Campo `pendingRecords` en estadísticas
+- **Query optimizada**: Conteo de registros con categoría "Pendiente"
+- **Grid responsivo**: Ajustado para 6 tarjetas (160px min-width)
+
+### 🐛 Correcciones Críticas
+- **Bug de categorización**: Corregida lógica que asignaba incorrectamente "Sin categoría"
+- **Detección de columnas**: Mejorada para distinguir columna faltante vs vacía
+- **Normalización consistente**: Actualizada en todos los componentes
+
+### 🎨 Mejoras de UI/UX
+- **Indicadores visuales**: Color azul (info) para registros pendientes
+- **Distinción clara**: Naranja para duplicados, azul para pendientes
+- **Layout optimizado**: Mejor distribución de tarjetas en diferentes pantallas
+
+### 📋 Flujo de Categorización Mejorado
+```
+CSV sin columna "categoría" → "Pendiente" (necesita categorización)
+CSV con columna vacía → "Sin categoría" (intencionalmente sin categorizar)
+CSV con valores → Categorías normalizadas según reglas
+```
+
+### 🔄 Cambios en Procesamiento
+- **Detección previa**: Verificar existencia de columna antes de procesar
+- **Asignación condicional**: Lógica separada para cada caso
+- **Consistencia**: Misma lógica en frontend y backend
+
+## [1.2.0] - 2025-10-06 (Planificado)
+
+### 🎯 Mejoras Planificadas
+- **Exportación de datos**: Descargar sesiones en Excel/CSV
+- **Notificaciones**: Alertas por email para fallos
+- **Análisis de tendencias**: Gráficos históricos de cargas
+- **Validación avanzada**: Reglas personalizables
+
+### 🔧 Optimizaciones Técnicas
+- **Procesamiento en lotes**: Para archivos muy grandes
+- **Cache inteligente**: Optimización de consultas frecuentes
+- **Compresión**: Almacenamiento eficiente de metadatos
+- **Índices adicionales**: Para consultas complejas
+
+### 📱 Mejoras de UX
+- **Drag & Drop mejorado**: Múltiples archivos simultáneos
+- **Progress tracking**: Barra de progreso en tiempo real
+- **Predicciones**: Tiempo estimado de procesamiento
+- **Shortcuts**: Atajos de teclado para acciones comunes
+
+---
+
+## 📋 Tipos de Cambios
+
+- **🎉 Lanzamiento**: Nueva versión mayor
+- **✨ Añadido**: Nuevas funcionalidades
+- **🔧 Cambiado**: Cambios en funcionalidades existentes
+- **🐛 Corregido**: Corrección de bugs
+- **🗑️ Eliminado**: Funcionalidades removidas
+- **🔒 Seguridad**: Vulnerabilidades corregidas
+- **📊 Datos**: Cambios en esquema de base de datos
+- **🎨 UI/UX**: Mejoras de interfaz y experiencia
+- **⚡ Performance**: Optimizaciones de rendimiento
+- **📚 Documentación**: Actualizaciones de documentación
+
+---
+
+## 🔗 Links Útiles
+
+- **Documentación completa**: [CSV_SESSIONS_COMPONENT.md](./CSV_SESSIONS_COMPONENT.md)
+- **README del componente**: [CSV_SESSIONS_README.md](./CSV_SESSIONS_README.md)
+- **Issues del proyecto**: GitHub Issues
+- **Pull Requests**: GitHub PRs
+
+---
+
+## 📝 Notas de Versión
+
+### Compatibilidad
+- **Base de datos**: Requiere migración para nuevos campos
+- **API**: Retrocompatible con versiones anteriores
+- **UI**: Cambios no rompen funcionalidad existente
+
+### Migración entre Versiones
+
+#### De 1.0.0 a 1.1.0
+```sql
+-- No requiere migración de BD, solo reiniciar servidor
+-- Los nuevos campos se calculan dinámicamente
+```
+
+#### Configuración Requerida
+```env
+# Variables de entorno requeridas
+DATABASE_URL="file:./dev.db"
+NEXT_PUBLIC_MAX_FILE_SIZE=10485760
+```
+
+### Testing
+- **Unit tests**: Funciones de procesamiento CSV
+- **Integration tests**: Flujos completos de carga
+- **UI tests**: Componentes de interfaz
+- **Performance tests**: Cargas de archivos grandes
+
+---
+
+*Changelog mantenido por el equipo de desarrollo*  
+*Formato basado en [Keep a Changelog](https://keepachangelog.com/)*
