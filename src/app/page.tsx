@@ -881,7 +881,7 @@ export default function Page() {
               <a href="/charts-test" className="nav-link">📊 Gráficas</a>
               <a href="/sin-categoria" className="nav-link">⚠️ Sin Categoría</a>
               <a href="/csv-sessions" className="nav-link">📁 Historial CSV</a>
-              <a href="/api-docs" className="nav-link">📖 API Docs</a>
+              <a href="/api-docs-simple" className="nav-link">📖 API Docs</a>
             </div>
           </div>
         </nav>
