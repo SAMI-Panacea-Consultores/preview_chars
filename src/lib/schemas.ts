@@ -66,7 +66,7 @@ export const PublicationQuerySchema = z.object({
 
 // Esquema para upload CSV
 export const UploadCSVSchema = z.object({
-  overwrite: z.coerce.boolean().default(false),
+  overwrite: z.string().transform((val) => val === 'true').default('false'),
 });
 
 // Esquemas para analytics

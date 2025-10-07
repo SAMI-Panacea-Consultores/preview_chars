@@ -35,6 +35,8 @@ export default function CSVUploader({ onUploadSuccess, onUploadError, onStatusCh
   const handleUpload = async (overwrite = false, fileToUpload?: File) => {
     const fileToUse = fileToUpload || selectedFile
     console.log('🔄 handleUpload called with:', { selectedFile: fileToUse?.name, overwrite })
+    console.log('🔧 Overwrite parameter type:', typeof overwrite, 'value:', overwrite)
+    
     if (!fileToUse) {
       console.log('❌ No file selected')
       return
@@ -56,8 +58,15 @@ export default function CSVUploader({ onUploadSuccess, onUploadError, onStatusCh
       console.log('⚠️ Duplicates found:', result.duplicates)
       // Mostrar diálogo de duplicados
       setDuplicateInfo(result)
-      // Limpiar el banner de estado cuando hay duplicados
-      onStatusChange?.(null)
+      // Mostrar información de duplicados en el banner
+      onStatusChange?.({
+        stage: 'error',
+        message: `Se encontraron ${result.duplicateCount} duplicados. Elige si sobrescribir o cancelar.`,
+        fileName: fileToUse.name,
+        totalRows: result.totalRows,
+        duplicateRows: result.duplicateCount,
+        newRows: result.newRows
+      })
     } else {
       console.log('❌ Upload failed:', result.error)
       onUploadError?.(result.error || 'Error desconocido')

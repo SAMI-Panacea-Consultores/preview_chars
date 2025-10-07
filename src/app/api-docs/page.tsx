@@ -22,10 +22,16 @@ export default function ApiDocsPage() {
   const [apiSpec, setApiSpec] = useState<ApiSpec | null>(null);
 
   useEffect(() => {
+    let isComponentMounted = true;
+
     // Cargar especificación de la API primero
     fetch('/api/docs')
       .then(res => res.json())
-      .then(data => setApiSpec(data))
+      .then(data => {
+        if (isComponentMounted) {
+          setApiSpec(data);
+        }
+      })
       .catch(err => console.error('Error loading API spec:', err));
 
     // Intentar cargar SwaggerUI
@@ -33,7 +39,7 @@ export default function ApiDocsPage() {
       try {
         // Crear contenedor para SwaggerUI
         const swaggerContainer = document.getElementById('swagger-ui');
-        if (!swaggerContainer) return;
+        if (!swaggerContainer || !isComponentMounted) return;
 
         // Limpiar contenido previo
         swaggerContainer.innerHTML = '';
@@ -42,10 +48,12 @@ export default function ApiDocsPage() {
         fetch('/api/docs')
           .then(response => response.json())
           .then(spec => {
+            if (!isComponentMounted) return;
+            
             // Crear SwaggerUI usando el script cargado
             if (window.SwaggerUIBundle) {
               window.SwaggerUIBundle({
-                spec: spec, // Usar la especificación directamente
+                spec: spec,
                 dom_id: '#swagger-ui',
                 presets: [
                   window.SwaggerUIBundle.presets.apis,
@@ -62,64 +70,77 @@ export default function ApiDocsPage() {
                 tryItOutEnabled: true,
                 supportedSubmitMethods: ['get', 'post', 'put', 'delete', 'patch'],
               });
-              setSwaggerLoaded(true);
+              if (isComponentMounted) {
+                setSwaggerLoaded(true);
+              }
             } else {
               throw new Error('SwaggerUIBundle not available');
             }
           })
           .catch(err => {
             console.error('Error loading SwaggerUI:', err);
-            setSwaggerError(true);
+            if (isComponentMounted) {
+              setSwaggerError(true);
+            }
           });
       } catch (err) {
         console.error('Error initializing SwaggerUI:', err);
-        setSwaggerError(true);
+        if (isComponentMounted) {
+          setSwaggerError(true);
+        }
       }
     };
 
-    // Cargar SwaggerUI desde CDN
+    // Cargar SwaggerUI desde CDN (solo si no está ya cargado)
     const loadSwaggerFromCDN = () => {
-      // CSS
-      const swaggerCSS = document.createElement('link');
-      swaggerCSS.rel = 'stylesheet';
-      swaggerCSS.href = 'https://unpkg.com/swagger-ui-dist@4.15.5/swagger-ui.css';
-      document.head.appendChild(swaggerCSS);
+      // Verificar si ya existe el CSS
+      const existingCSS = document.querySelector('link[href*="swagger-ui.css"]');
+      if (!existingCSS) {
+        const swaggerCSS = document.createElement('link');
+        swaggerCSS.rel = 'stylesheet';
+        swaggerCSS.href = 'https://unpkg.com/swagger-ui-dist@4.15.5/swagger-ui.css';
+        document.head.appendChild(swaggerCSS);
+      }
 
-      // JS
-      const swaggerJS = document.createElement('script');
-      swaggerJS.src = 'https://unpkg.com/swagger-ui-dist@4.15.5/swagger-ui-bundle.js';
-      swaggerJS.onload = () => {
-        setTimeout(loadSwaggerUI, 100); // Pequeño delay para asegurar que el script esté listo
-      };
-      swaggerJS.onerror = () => {
-        console.error('Failed to load SwaggerUI from CDN');
-        setSwaggerError(true);
-      };
-      document.head.appendChild(swaggerJS);
-
-      // Cleanup function
-      return () => {
-        try {
-          if (document.head.contains(swaggerCSS)) {
-            document.head.removeChild(swaggerCSS);
+      // Verificar si ya existe el JS
+      const existingJS = document.querySelector('script[src*="swagger-ui-bundle.js"]');
+      if (!existingJS) {
+        const swaggerJS = document.createElement('script');
+        swaggerJS.src = 'https://unpkg.com/swagger-ui-dist@4.15.5/swagger-ui-bundle.js';
+        swaggerJS.onload = () => {
+          if (isComponentMounted) {
+            setTimeout(loadSwaggerUI, 100);
           }
-          if (document.head.contains(swaggerJS)) {
-            document.head.removeChild(swaggerJS);
+        };
+        swaggerJS.onerror = () => {
+          console.error('Failed to load SwaggerUI from CDN');
+          if (isComponentMounted) {
+            setSwaggerError(true);
           }
-        } catch (err) {
-          console.warn('Error during cleanup:', err);
-        }
-      };
+        };
+        document.head.appendChild(swaggerJS);
+      } else if (window.SwaggerUIBundle) {
+        // El script ya está cargado y disponible
+        loadSwaggerUI();
+      }
     };
 
     // Si SwaggerUI ya está disponible, usarlo directamente
     if (typeof window !== 'undefined' && window.SwaggerUIBundle) {
       loadSwaggerUI();
     } else {
-      // Cargar desde CDN
-      const cleanup = loadSwaggerFromCDN();
-      return cleanup;
+      loadSwaggerFromCDN();
     }
+
+    // Cleanup function simplificado - solo marcamos el componente como desmontado
+    return () => {
+      isComponentMounted = false;
+      // Limpiar solo el contenido del contenedor, no los scripts globales
+      const swaggerContainer = document.getElementById('swagger-ui');
+      if (swaggerContainer) {
+        swaggerContainer.innerHTML = '';
+      }
+    };
   }, []);
 
   if (swaggerError) {

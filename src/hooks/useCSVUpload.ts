@@ -49,6 +49,8 @@ export function useCSVUpload(): UseCSVUploadReturn {
       const formData = new FormData()
       formData.append('file', file)
       formData.append('overwrite', overwrite.toString())
+      
+      console.log('📤 Sending to API:', { fileName: file.name, overwrite: overwrite.toString() });
 
       // Estado: validando
       onStatusChange?.({

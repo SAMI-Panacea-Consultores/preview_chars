@@ -21,6 +21,7 @@ function normalizeCategory(raw: string): string {
   if (/invertir.*para.*crecer/i.test(c)) return 'INVERTIR PARA CRECER';
   if (/seguridad/i.test(c)) return 'SEGURIDAD';
   if (/transparencia.*publica/i.test(c)) return 'TRANSPARENCIA PÚBLICA';
+  if (/pendiente/i.test(c)) return 'Pendiente';
   if (/error/i.test(c)) return 'Error en procesamiento';
   if (/estrategia/i.test(c)) return 'Sin categoría';
   
@@ -109,16 +110,25 @@ function parseCSVDate(fechaStr: string): Date {
  *     description: |
  *       Importa publicaciones desde un archivo CSV con validación y manejo de duplicados.
  *       
+ *       **IMPORTANTE:** Las publicaciones de tipo "Historia" se excluyen automáticamente y NO se guardan en la base de datos.
+ *       
  *       **Formato del CSV:**
-       *       - ID: Identificador único de la publicación
-       *       - Fecha: Fecha en formato M/D/YYYY H:MM am/pm (ej: 8/2/2025 5:34 pm)
-       *       - Red: Red social (Instagram, Facebook, TikTok, Twitter)
-       *       - Tipo de publicación: Tipo de contenido (Publicar, Historia, Reel, Video, etc.)
-       *       - Perfil: Nombre del perfil
-       *       - categoria: Categoría de la publicación (puede tener múltiples separadas por comas)
-       *       - Impresiones: Número de impresiones (puede tener comas como separadores de miles)
-       *       - Alcance: Número de personas alcanzadas
-       *       - Me gusta: Número de me gusta
+ *       - ID: Identificador único de la publicación
+ *       - Fecha: Fecha en formato M/D/YYYY H:MM am/pm (ej: 8/2/2025 5:34 pm)
+ *       - Red: Red social (Instagram, Facebook, TikTok, Twitter)
+ *       - Tipo de publicación: Tipo de contenido (Publicar, Reel, Video, etc.) - Las "Historia" se excluyen
+ *       - Perfil: Nombre del perfil
+ *       - categoria: Categoría de la publicación (puede tener múltiples separadas por comas)
+ *                   Si la columna no existe en el CSV, se asigna automáticamente "Pendiente"
+ *                   Si la columna existe pero está vacía, se asigna "Sin categoría"
+ *       - Publicar: Contenido de la publicación (texto, enlaces, etc.)
+ *       - Impresiones: Número de impresiones (puede tener comas como separadores de miles)
+ *       - Alcance: Número de personas alcanzadas
+ *       - Me gusta: Número de me gusta
+ *       
+ *       **Filtros Automáticos:**
+ *       - Se excluyen automáticamente todas las publicaciones de tipo "Historia"
+ *       - El contador de historias excluidas se reporta en la respuesta
  *       
  *       **Manejo de Duplicados:**
  *       - Si overwrite=false: Retorna lista de duplicados para confirmación
@@ -246,6 +256,7 @@ function parseCSVDate(fechaStr: string): Date {
  */
 async function handlePOST(request: NextRequest) {
   const startTime = Date.now();
+  let csvSession: any = null;
   
   try {
     const formData = await request.formData();
@@ -288,6 +299,23 @@ async function handlePOST(request: NextRequest) {
     };
 
     const { overwrite } = UploadCSVSchema.parse(formParams);
+    
+    console.log(`🔧 Upload parameters: overwrite=${overwrite}, fileName=${file.name}`);
+
+    // Crear sesión de carga CSV
+    csvSession = await prisma.csvSession.create({
+      data: {
+        fileName: file.name,
+        fileSize: file.size,
+        status: 'processing',
+        overwrite: overwrite,
+        originalHeaders: '',
+        detectedColumns: '',
+        totalRows: 0
+      }
+    });
+
+    console.log(`📊 Created CSV session: ${csvSession.id} for file: ${file.name}`);
 
     // Leer y parsear CSV
     const text = await file.text();
@@ -316,6 +344,24 @@ async function handlePOST(request: NextRequest) {
     const data = parseResult.data as any[];
     const headers = parseResult.meta.fields || [];
 
+    // Actualizar sesión con información del CSV
+    await prisma.csvSession.update({
+      where: { id: csvSession.id },
+      data: {
+        totalRows: data.length,
+        originalHeaders: JSON.stringify(headers),
+        detectedColumns: JSON.stringify({
+          idKey: headers.find(h => h.toLowerCase().includes('id')) || 'ID',
+          fechaKey: headers.find(h => h.toLowerCase().includes('fecha')) || 'Fecha',
+          redKey: headers.find(h => h.toLowerCase() === 'red') || 'Red',
+          perfilKey: headers.find(h => h.toLowerCase().includes('perfil')) || 'Perfil',
+          categoriaKey: headers.find(h => h.toLowerCase().includes('categoria')) || 'categoria',
+          tipoPublicacionKey: headers.find(h => h.toLowerCase().includes('tipo') && h.toLowerCase().includes('publicaci')) || 'Tipo de publicación',
+          publicarKey: headers.find(h => h.toLowerCase() === 'publicar') || 'Publicar'
+        })
+      }
+    });
+
     // Validar estructura del CSV
     const structureValidation = validateCSVStructure(headers);
     if (!structureValidation.valid) {
@@ -339,20 +385,26 @@ async function handlePOST(request: NextRequest) {
     const perfilKey = headers.find(h => h.toLowerCase().includes('perfil')) || 'Perfil';
     const categoriaKey = headers.find(h => h.toLowerCase().includes('categoria')) || 'categoria';
     const tipoPublicacionKey = headers.find(h => h.toLowerCase().includes('tipo') && h.toLowerCase().includes('publicaci')) || 'Tipo de publicación';
+    const publicarKey = headers.find(h => h.toLowerCase() === 'publicar') || 'Publicar';
 
     // Verificar duplicados si no se quiere sobrescribir
     const existingIds = new Set();
     if (!overwrite) {
+      console.log('🔍 Checking for existing IDs (overwrite=false)...');
       const existingPublicaciones = await prisma.publicacion.findMany({
         select: { id: true }
       });
       existingPublicaciones.forEach(p => existingIds.add(p.id));
+      console.log(`📊 Found ${existingIds.size} existing IDs in database`);
+    } else {
+      console.log('⚠️ Skipping duplicate check (overwrite=true)');
     }
 
     // Procesar datos con validaciones
     const publicacionesToInsert = [];
     const duplicateIds = [];
     const invalidRows = [];
+    const excludedHistorias = []; // Contador de historias excluidas
     
     for (let rowIndex = 0; rowIndex < data.length; rowIndex++) {
       const row = data[rowIndex];
@@ -400,12 +452,40 @@ async function handlePOST(request: NextRequest) {
       }
 
       // Procesar categorías múltiples
+      const hasCategoriasColumn = headers.some(h => h.toLowerCase().includes('categoria'));
       const rawCategories = (row[categoriaKey] || '').toString();
-      const categories = rawCategories.split(',').map(normalizeCategory).filter(Boolean);
-      if (categories.length === 0) categories.push('Sin categoría');
+      
+      let categories: string[] = [];
+      
+      if (hasCategoriasColumn) {
+        // La columna existe, procesar normalmente
+        categories = rawCategories.split(',').map(normalizeCategory).filter(Boolean);
+        if (categories.length === 0) {
+          categories.push('Sin categoría'); // Columna existe pero está vacía
+        }
+      } else {
+        // La columna no existe en el CSV -> asignar "Pendiente"
+        categories.push('Pendiente');
+      }
 
       // Obtener tipo de publicación
       const tipoPublicacion = (row[tipoPublicacionKey] || 'Publicar').toString().trim();
+
+      // Obtener contenido de la columna "Publicar"
+      const publicar = (row[publicarKey] || '').toString().trim();
+
+      // FILTRO: Excluir publicaciones de tipo "Historia"
+      if (tipoPublicacion.toLowerCase().includes('historia')) {
+        // Registrar la historia excluida para estadísticas
+        excludedHistorias.push({
+          row: rowIndex + 1,
+          id: id,
+          perfil: perfil,
+          tipo: tipoPublicacion
+        });
+        // Saltar esta fila sin procesarla
+        continue;
+      }
 
       // Parsear métricas con validación
       const impresiones = parseNumber(row['Impresiones'] || '0');
@@ -429,9 +509,11 @@ async function handlePOST(request: NextRequest) {
           perfil,
           categoria,
           tipoPublicacion,
+          publicar: publicar || null, // Guardar contenido de la columna "Publicar"
           impresiones: impresionesPerCategory,
           alcance: alcancePerCategory,
-          meGusta: meGustaPerCategory
+          meGusta: meGustaPerCategory,
+          csvSessionId: csvSession.id // Asociar con la sesión
         });
       }
     }
@@ -452,7 +534,22 @@ async function handlePOST(request: NextRequest) {
 
     // Si hay duplicados y no se quiere sobrescribir, devolver para confirmación
     if (duplicateIds.length > 0 && !overwrite) {
+      console.log(`🔍 Found ${duplicateIds.length} duplicates, returning for confirmation`);
       logRequest(request, { statusCode: 409 } as any, startTime);
+      
+      // Actualizar sesión con información de duplicados
+      await prisma.csvSession.update({
+        where: { id: csvSession.id },
+        data: {
+          status: 'partial',
+          processedRows: publicacionesToInsert.length,
+          duplicateRows: duplicateIds.length,
+          totalRows: data.length,
+          completedAt: new Date(),
+          processingTime: Date.now() - startTime,
+          errorMessage: `${duplicateIds.length} duplicados encontrados - requiere confirmación`
+        }
+      });
       
       return NextResponse.json({
         success: false,
@@ -460,7 +557,8 @@ async function handlePOST(request: NextRequest) {
         totalRows: data.length,
         duplicateCount: duplicateIds.length,
         newRows: publicacionesToInsert.length,
-        message: `${duplicateIds.length} publicaciones duplicadas encontradas`
+        message: `${duplicateIds.length} publicaciones duplicadas encontradas`,
+        sessionId: csvSession.id
       }, { status: 409 });
     }
 
@@ -507,27 +605,75 @@ async function handlePOST(request: NextRequest) {
 
     logRequest(request, { statusCode: 201 } as any, startTime);
 
+    // Actualizar sesión CSV con estadísticas finales
+    const processingTime = Date.now() - startTime;
+    await prisma.csvSession.update({
+      where: { id: csvSession.id },
+      data: {
+        status: 'completed',
+        processedRows: publicacionesToInsert.length,
+        insertedRows: result.inserted,
+        updatedRows: result.updated,
+        errorRows: result.errors,
+        duplicateRows: duplicateIds.length,
+        excludedHistorias: excludedHistorias.length,
+        categoriesFound: JSON.stringify([...new Set(publicacionesToInsert.map(p => p.categoria))]),
+        profilesFound: JSON.stringify([...new Set(publicacionesToInsert.map(p => p.perfil))]),
+        networksFound: JSON.stringify([...new Set(publicacionesToInsert.map(p => p.red))]),
+        completedAt: new Date(),
+        processingTime: processingTime
+      }
+    });
+
     return NextResponse.json({
       success: true,
+      sessionId: csvSession.id, // Incluir ID de sesión en respuesta
       inserted: result.inserted,
       updated: result.updated,
       errors: result.errors,
       totalRows: data.length,
       processedRows: publicacionesToInsert.length,
+      excludedHistorias: excludedHistorias.length, // Nuevas estadísticas
       message: overwrite 
-        ? `${result.inserted} publicaciones procesadas (insertadas/actualizadas)`
-        : `${result.inserted} nuevas publicaciones insertadas`,
+        ? `${result.inserted} publicaciones procesadas (insertadas/actualizadas). ${excludedHistorias.length} historias excluidas automáticamente.`
+        : `${result.inserted} nuevas publicaciones insertadas. ${excludedHistorias.length} historias excluidas automáticamente.`,
       stats: {
         fileSize: `${(file.size / 1024).toFixed(2)} KB`,
-        processingTime: `${Date.now() - startTime}ms`,
+        processingTime: `${processingTime}ms`,
         categoriesFound: [...new Set(publicacionesToInsert.map(p => p.categoria))],
         profilesFound: [...new Set(publicacionesToInsert.map(p => p.perfil))],
-        networksFound: [...new Set(publicacionesToInsert.map(p => p.red))]
+        networksFound: [...new Set(publicacionesToInsert.map(p => p.red))],
+        excludedHistorias: excludedHistorias.length > 0 ? {
+          count: excludedHistorias.length,
+          examples: excludedHistorias.slice(0, 5).map(h => `${h.perfil} - ${h.tipo}`)
+        } : null
       }
     }, { status: 201 });
 
   } catch (error) {
     console.error('Error uploading CSV:', error);
+    
+    // Actualizar sesión con error si existe
+    if (csvSession) {
+      try {
+        await prisma.csvSession.update({
+          where: { id: csvSession.id },
+          data: {
+            status: 'failed',
+            errorMessage: error instanceof Error ? error.message : 'Unknown error',
+            errorDetails: JSON.stringify({
+              name: error instanceof Error ? error.name : 'Unknown',
+              stack: error instanceof Error ? error.stack : null,
+              timestamp: new Date().toISOString()
+            }),
+            completedAt: new Date(),
+            processingTime: Date.now() - startTime
+          }
+        });
+      } catch (updateError) {
+        console.error('Error updating CSV session with error:', updateError);
+      }
+    }
     
     // Manejar errores de validación Zod
     if (error instanceof Error && error.name === 'ZodError') {
