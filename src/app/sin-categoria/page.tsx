@@ -20,6 +20,45 @@ interface PerfilSinCategoria {
   guardados: number;
 }
 
+// Componente para header de columna ordenable
+interface SortableHeaderProps {
+  field: keyof PerfilSinCategoria;
+  label: string;
+  currentSortField: keyof PerfilSinCategoria;
+  currentSortDirection: 'asc' | 'desc';
+  onSort: (field: keyof PerfilSinCategoria) => void;
+  className?: string;
+}
+
+const SortableHeader: React.FC<SortableHeaderProps> = ({
+  field,
+  label,
+  currentSortField,
+  currentSortDirection,
+  onSort,
+  className = "table-header-cell metric-column"
+}) => {
+  const isActive = currentSortField === field;
+  const isAsc = isActive && currentSortDirection === 'asc';
+  const isDesc = isActive && currentSortDirection === 'desc';
+
+  return (
+    <th 
+      className={`${className} sortable-header ${isActive ? 'active' : ''}`}
+      onClick={() => onSort(field)}
+      title={`Ordenar por ${label} ${isActive ? (isAsc ? 'descendente' : 'ascendente') : 'descendente'}`}
+    >
+      <div className="header-content">
+        <span className="header-text">{label}</span>
+        <div className="sort-icons">
+          <span className={`sort-arrow sort-up ${isAsc ? 'active' : ''}`}>▲</span>
+          <span className={`sort-arrow sort-down ${isDesc ? 'active' : ''}`}>▼</span>
+        </div>
+      </div>
+    </th>
+  );
+};
+
 // Función para generar PDF ejecutivo
 const generateExecutivePDF = (
   perfiles: PerfilSinCategoria[], 
@@ -217,6 +256,22 @@ export default function SinCategoriaPage() {
   // Estado para colapsar/expandir filtros
   const [filtersExpanded, setFiltersExpanded] = useState(false);
 
+  // Estados para ordenamiento de tabla
+  const [sortField, setSortField] = useState<keyof PerfilSinCategoria>('porcentajeSinCategoria');
+  const [sortDirection, setSortDirection] = useState<'asc' | 'desc'>('desc');
+
+  // Función para manejar el ordenamiento
+  const handleSort = (field: keyof PerfilSinCategoria) => {
+    if (sortField === field) {
+      // Si es la misma columna, cambiar dirección
+      setSortDirection(sortDirection === 'asc' ? 'desc' : 'asc');
+    } else {
+      // Si es una columna diferente, ordenar descendente por defecto
+      setSortField(field);
+      setSortDirection('desc');
+    }
+  };
+
   // Hook para obtener datos (igual que el home)
   const { 
     data: dbData, 
@@ -337,7 +392,7 @@ export default function SinCategoriaPage() {
     });
   }, [completeData, red, tiposPublicacionSeleccionados, fechaInicio, fechaFin]);
 
-  // Calcular métricas por perfil usando TODOS los datos históricos
+  // Calcular métricas por perfil usando los datos filtrados (respeta fechas seleccionadas)
   const perfilesSinCategoria = useMemo(() => {
     if (!filteredData || filteredData.length === 0) return [];
 
@@ -375,7 +430,7 @@ export default function SinCategoriaPage() {
       return c;
     }
 
-    // Procesar todos los datos filtrados (solo por red y tipo de publicación)
+    // Procesar todos los datos filtrados (por red, tipo de publicación Y fechas)
     filteredData.forEach(item => {
       const perfil = item.Perfil;
       
@@ -451,19 +506,28 @@ export default function SinCategoriaPage() {
           porcentajeSinCategoria: porcentaje
         };
       })
-      // Ordenar por porcentaje descendente (más desalineados primero)
+      // Aplicar ordenamiento según el estado actual
       .sort((a, b) => {
-        if (Math.abs(a.porcentajeSinCategoria - b.porcentajeSinCategoria) < 0.1) {
-          return b.publicacionesSinCategoria - a.publicacionesSinCategoria;
+        // Obtener valores para comparar
+        const aValue = a[sortField];
+        const bValue = b[sortField];
+        
+        // Manejar comparación de strings y números
+        let comparison = 0;
+        if (typeof aValue === 'string' && typeof bValue === 'string') {
+          comparison = aValue.localeCompare(bValue);
+        } else {
+          comparison = (Number(aValue) || 0) - (Number(bValue) || 0);
         }
-        return b.porcentajeSinCategoria - a.porcentajeSinCategoria;
+        
+        return sortDirection === 'asc' ? comparison : -comparison;
       });
 
     console.log(`📊 Showing ALL ${result.length} profiles for ${red}`);
     console.log(`📈 Data range: ${fechaMin} to ${fechaMax}`);
     console.log(`🎯 Using HOME normalization logic for categories`);
     return result;
-  }, [filteredData, red, fechaMin, fechaMax]);
+  }, [filteredData, red, fechaMin, fechaMax, sortField, sortDirection]);
 
   // Estadísticas locales para el panel de filtros
   const localStats = useMemo(() => {
@@ -814,17 +878,84 @@ export default function SinCategoriaPage() {
                   <thead>
                     <tr>
                       <th className="table-header-cell rank-column">#</th>
-                      <th className="table-header-cell profile-column">Perfil</th>
-                      <th className="table-header-cell metric-column">%Desalineación</th>
-                      <th className="table-header-cell metric-column">Publicaciones</th>
-                      <th className="table-header-cell metric-column">Sin Categoría</th>
-                      <th className="table-header-cell metric-column">Categorizadas</th>
-                      <th className="table-header-cell metric-column">Impresiones</th>
-                      <th className="table-header-cell metric-column">Alcance</th>
-                      <th className="table-header-cell metric-column">Me Gusta</th>
-                      <th className="table-header-cell metric-column">Comentarios</th>
-                      <th className="table-header-cell metric-column">Compartidos</th>
-                      <th className="table-header-cell metric-column">Guardados</th>
+                      <SortableHeader
+                        field="perfil"
+                        label="Perfil"
+                        currentSortField={sortField}
+                        currentSortDirection={sortDirection}
+                        onSort={handleSort}
+                        className="table-header-cell profile-column"
+                      />
+                      <SortableHeader
+                        field="porcentajeSinCategoria"
+                        label="%Desalineación"
+                        currentSortField={sortField}
+                        currentSortDirection={sortDirection}
+                        onSort={handleSort}
+                      />
+                      <SortableHeader
+                        field="totalHistorico"
+                        label="Publicaciones"
+                        currentSortField={sortField}
+                        currentSortDirection={sortDirection}
+                        onSort={handleSort}
+                      />
+                      <SortableHeader
+                        field="publicacionesSinCategoria"
+                        label="Sin Categoría"
+                        currentSortField={sortField}
+                        currentSortDirection={sortDirection}
+                        onSort={handleSort}
+                      />
+                      <SortableHeader
+                        field="totalCategorizadas"
+                        label="Categorizadas"
+                        currentSortField={sortField}
+                        currentSortDirection={sortDirection}
+                        onSort={handleSort}
+                      />
+                      <SortableHeader
+                        field="impresiones"
+                        label="Impresiones"
+                        currentSortField={sortField}
+                        currentSortDirection={sortDirection}
+                        onSort={handleSort}
+                      />
+                      <SortableHeader
+                        field="alcance"
+                        label="Alcance"
+                        currentSortField={sortField}
+                        currentSortDirection={sortDirection}
+                        onSort={handleSort}
+                      />
+                      <SortableHeader
+                        field="meGusta"
+                        label="Me Gusta"
+                        currentSortField={sortField}
+                        currentSortDirection={sortDirection}
+                        onSort={handleSort}
+                      />
+                      <SortableHeader
+                        field="comentarios"
+                        label="Comentarios"
+                        currentSortField={sortField}
+                        currentSortDirection={sortDirection}
+                        onSort={handleSort}
+                      />
+                      <SortableHeader
+                        field="compartidos"
+                        label="Compartidos"
+                        currentSortField={sortField}
+                        currentSortDirection={sortDirection}
+                        onSort={handleSort}
+                      />
+                      <SortableHeader
+                        field="guardados"
+                        label="Guardados"
+                        currentSortField={sortField}
+                        currentSortDirection={sortDirection}
+                        onSort={handleSort}
+                      />
                     </tr>
                   </thead>
                   <tbody>

@@ -873,10 +873,7 @@ export default function Page() {
         <nav className="dashboard-nav">
           <div className="dashboard-brand">
             <div className="dashboard-logo">📊</div>
-            <div>
-              <h1 className="dashboard-title">Analytics Dashboard</h1>
-              <p className="dashboard-subtitle">Análisis de publicaciones por categoría</p>
-            </div>
+            <h1 className="dashboard-title">Analytics Dashboard</h1>
           </div>
           <div className="dashboard-actions">
             {/* Enlaces de navegación */}
@@ -886,14 +883,6 @@ export default function Page() {
               <a href="/csv-sessions" className="nav-link">📁 Historial CSV</a>
               <a href="/api-docs" className="nav-link">📖 API Docs</a>
             </div>
-            
-            {/* Botón comparar */}
-            <button 
-              className={`compare-btn ${isComparing ? 'active' : ''}`}
-              onClick={() => setIsComparing(!isComparing)}
-            >
-              {isComparing ? '✕' : '⚖️'} {isComparing ? 'Cancelar' : 'Comparar'}
-            </button>
           </div>
         </nav>
       </header>
